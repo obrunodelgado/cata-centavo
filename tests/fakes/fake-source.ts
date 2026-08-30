@@ -1,14 +1,14 @@
-import type { Source } from "../../src/mcp/source.ts";
-import { createTransactionReader } from "../../src/core/transactions.ts";
-import { openDatabase } from "../../src/storage/db.ts";
-import { CACHE_MIGRATIONS } from "../../src/storage/migrations.ts";
-import { createTransactionStore } from "../../src/storage/transactions.ts";
-import { toFailure } from "../../src/pluggy/errors.ts";
+import type { Source } from "../../apps/cli/src/mcp/source.ts";
+import { createTransactionReader } from "@cata-centavo/core";
+import { openDatabase } from "@cata-centavo/storage";
+import { CACHE_MIGRATIONS } from "@cata-centavo/storage";
+import { createTransactionStore } from "@cata-centavo/storage";
+import { toFailure } from "@cata-centavo/pluggy";
 import { fakeBank, threeConnections } from "./fake-bank.ts";
 import type { FakeBank, FakeBankOptions } from "./fake-bank.ts";
 import { fakeLogger } from "./fake-logger.ts";
 
-import type { CategoryWriter } from "../../src/core/contracts.ts";
+import type { CategoryWriter } from "@cata-centavo/core";
 
 export type FakeSourceOptions = Pick<
   FakeBankOptions,

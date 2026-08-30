@@ -20,58 +20,60 @@ that genuinely owns it, so one direction survives and the other dies.`,
     {
       name: "core-imports-no-infrastructure",
       severity: "error",
-      comment: `src/core/ holds business rules and imports no infrastructure (ADR §6).
+      comment: `packages/core/ holds business rules and imports no infrastructure (ADR §6).
 The contract belongs to its consumer: declare what you need as a type in
 core/contracts.ts and receive the implementation as a parameter.`,
-      from: { path: "^src/core/" },
-      to: { path: "^src/(pluggy|storage|mcp)/" },
+      from: { path: "^packages/core/src/" },
+      to: { path: "^packages/(pluggy|storage)/src/|^apps/cli/src/mcp/" },
     },
     {
       name: "core-imports-no-packages",
       severity: "error",
-      comment: `src/core/ is pure. No SDK, no client, no driver — only zod, which the ADR
+      comment: `packages/core/ is pure. No SDK, no client, no driver — only zod, which the ADR
 already promises to core/category.ts. If you need what a package does, put
 the type in core/contracts.ts and let bin/ inject the implementation.`,
-      from: { path: "^src/core/" },
+      from: { path: "^packages/core/src/" },
       to: { dependencyTypes: ["npm"], pathNot: "node_modules/zod/" },
     },
     {
       name: "only-bin-builds-infrastructure",
       severity: "error",
-      comment: `Only src/bin/ constructs infrastructure. cli/ and mcp/ receive Bank, Store
-and Logger as parameters, which is what keeps init and doctor testable and
-what lets ADR §16.4 forbid process.exit inside a provider.`,
-      from: { path: "^src/(cli|mcp)/" },
-      to: { path: "^src/(pluggy|storage)/|^src/logging\\.ts$" },
+      comment: `Only apps/cli/src/bin/ constructs infrastructure. apps/cli/src/cli/ and
+apps/cli/src/mcp/ receive Bank, Store and Logger as parameters, which is
+what keeps init and doctor testable and what lets ADR §16.4 forbid
+process.exit inside a provider.`,
+      from: { path: "^apps/cli/src/(cli|mcp)/" },
+      to: { path: "^packages/(pluggy|storage)/src/|^apps/cli/src/logging\\.ts$" },
     },
     {
       name: "src-imports-no-tests",
       severity: "error",
-      comment: `Production code reaching into tests/. The fakes live outside src/ precisely
-so this cannot happen — if you need this shape in production, it is not a
-fake, it is a missing abstraction.`,
-      from: { path: "^src/" },
+      comment: `Production code reaching into tests/. The fakes live outside packages/ and
+apps/ precisely so this cannot happen — if you need this shape in production,
+it is not a fake, it is a missing abstraction.`,
+      from: { path: "^(packages|apps/cli/src)/" },
       to: { path: "^tests/" },
     },
     {
       name: "no-dev-dependencies-in-src",
       severity: "error",
-      comment: `A devDependency imported from src/ ships broken: it is absent from the
-published package. Move it to dependencies, or move the code that needs it
-out of src/.`,
-      from: { path: "^src/" },
+      comment: `A devDependency imported from production code ships broken: it is absent from
+the published package. Move it to dependencies, or move the code that needs it
+out of packages/ and apps/cli/src/.`,
+      from: { path: "^(packages|apps/cli/src)/" },
       to: { dependencyTypes: ["npm-dev"] },
     },
     {
       name: "no-undeclared-folders",
       severity: "error",
-      comment: `A module under src/ outside the folders the ADR lists. No services/, no
-utils/, no ports/ or adapters/ — the pattern lives in the direction of
-dependencies, not in a folder name. Amend the ADR before adding a folder.`,
+      comment: `A module under packages/ or apps/cli/src/ outside the folders the ADR lists.
+No services/, no utils/, no ports/ or adapters/ — the pattern lives in the
+direction of dependencies, not in a folder name. Amend the ADR before adding
+a folder.`,
       from: {},
       to: {
-        path: "^src/",
-        pathNot: "^src/(bin|cli|core|mcp|pluggy|storage)/|^src/(config|logging)\\.ts$",
+        path: "^(packages|apps/cli/src)/",
+        pathNot: "^packages/(core|pluggy|storage)/src/|^apps/cli/src/(bin|cli|mcp)/|^apps/cli/src/(config|logging)\\.ts$",
       },
     },
     {

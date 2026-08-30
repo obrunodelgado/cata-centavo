@@ -1,6 +1,6 @@
-import type { Account } from "../../src/core/account.ts";
-import type { Bill } from "../../src/core/bill.ts";
-import type { DerivedTransaction } from "../../src/core/transaction.ts";
+import type { Account } from "@cata-centavo/core";
+import type { Bill } from "@cata-centavo/core";
+import type { DerivedTransaction } from "@cata-centavo/core";
 import { account } from "./fake-bank.ts";
 import { fixedClock } from "./fixed-clock.ts";
 import type { FixedClock } from "./fixed-clock.ts";

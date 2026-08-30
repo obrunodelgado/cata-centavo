@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { collectInvestments, compareInvestmentPositions, sortInvestments, summarizeInvestments } from "../../src/core/investments.ts";
-import type { BankFailure } from "../../src/core/contracts.ts";
-import { AuthError } from "../../src/pluggy/errors.ts";
+import { collectInvestments, compareInvestmentPositions, sortInvestments, summarizeInvestments } from "@cata-centavo/core";
+import type { BankFailure } from "@cata-centavo/core";
+import { AuthError } from "@cata-centavo/pluggy";
 import { fakeBank, investmentPosition, threeConnections, type FakeBankOptions } from "../fakes/fake-bank.ts";
 
 function toFailure(error: unknown): BankFailure {

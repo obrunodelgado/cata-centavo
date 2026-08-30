@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { summarize, type Summary } from "../../src/core/balance.ts";
+import { summarize, type Summary } from "@cata-centavo/core";
 import { account } from "../fakes/fake-bank.ts";
 
 describe("summarize", () => {

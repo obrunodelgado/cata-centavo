@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { aggregate } from "../../src/core/aggregate.ts";
+import { aggregate } from "@cata-centavo/core";
 import { derived } from "../fakes/transaction-builder.ts";
 
 const TODAY = "2026-06-30";

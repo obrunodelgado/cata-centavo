@@ -1,6 +1,6 @@
-import type { CategorySource } from "../../src/core/category-source.ts";
-import { topCategoryOf } from "../../src/core/taxonomy.ts";
-import type { DerivedTransaction, Transaction } from "../../src/core/transaction.ts";
+import type { CategorySource } from "@cata-centavo/core";
+import { topCategoryOf } from "@cata-centavo/core";
+import type { DerivedTransaction, Transaction } from "@cata-centavo/core";
 
 /** Builds a complete synthetic transaction, with overrides for focused cases. */
 export function tx(overrides: Partial<Transaction> = {}): Transaction {

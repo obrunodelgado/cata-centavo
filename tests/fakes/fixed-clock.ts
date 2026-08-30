@@ -1,4 +1,4 @@
-import type { Clock } from "../../src/core/contracts.ts";
+import type { Clock } from "@cata-centavo/core";
 
 export type FixedClock = Clock & {
   advance(milliseconds: number): void;

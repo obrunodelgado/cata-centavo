@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-import { readLocalState } from "../../src/storage/diagnostics.ts";
-import { openDatabase, openDatabases } from "../../src/storage/db.ts";
-import { CACHE_MIGRATIONS } from "../../src/storage/migrations.ts";
+import { readLocalState } from "@cata-centavo/storage";
+import { openDatabase, openDatabases } from "@cata-centavo/storage";
+import { CACHE_MIGRATIONS } from "@cata-centavo/storage";
 
 function freshDb() {
   return openDatabase({ path: ":memory:", migrations: CACHE_MIGRATIONS, policy: "rebuild" });
@@ -92,7 +92,7 @@ describe("readLocalState", () => {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "cata-centavo-diagnostics-")));
     const cacheDb = join(dir, "cache.db");
     const dataDb = join(dir, "data.db");
-    const databases = openDatabases({ cacheDb, dataDb, logFile: join(dir, "log") });
+    const databases = openDatabases({ cacheDb, dataDb });
 
     try {
       const state = readLocalState(databases.db);

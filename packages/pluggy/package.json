@@ -1,0 +1,38 @@
+{
+  "name": "@cata-centavo/pluggy",
+  "version": "0.3.1",
+  "type": "module",
+  "description": "Pluggy API client and mapper for cata-centavo",
+  "license": "MIT",
+  "author": "Marcus Xavier",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarcusXavierr/cata-centavo.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -b tsconfig.build.json"
+  },
+  "dependencies": {
+    "@cata-centavo/core": "0.3.1",
+    "pluggy-sdk": "^0.90.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

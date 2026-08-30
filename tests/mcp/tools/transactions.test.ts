@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { Clock, TransactionFilter, TransactionStore } from "../../../src/core/contracts.ts";
-import type { TransactionReader } from "../../../src/core/transactions.ts";
-import { CATEGORIES } from "../../../src/core/category.ts";
-import { handleGetTransactions, handleListTransactions } from "../../../src/mcp/tools/transactions.ts";
+import type { Clock, TransactionFilter, TransactionStore } from "@cata-centavo/core";
+import type { TransactionReader } from "@cata-centavo/core";
+import { CATEGORIES } from "@cata-centavo/core";
+import { handleGetTransactions, handleListTransactions } from "../../../apps/cli/src/mcp/tools/transactions.ts";
 
-import type { ToolDeps } from "../../../src/mcp/tools/result.ts";
+import type { ToolDeps } from "../../../apps/cli/src/mcp/tools/result.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 import { fakeSource } from "../../fakes/fake-source.ts";
 import { account } from "../../fakes/fake-bank.ts";

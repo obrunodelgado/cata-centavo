@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-import type { Account } from "../../src/core/account.ts";
-import type { Bill } from "../../src/core/bill.ts";
-import type { Transaction } from "../../src/core/transaction.ts";
+import type { Account } from "@cata-centavo/core";
+import type { Bill } from "@cata-centavo/core";
+import type { Transaction } from "@cata-centavo/core";
 import { connection } from "../fakes/fake-bank.ts";
-import { ResponseShapeError } from "../../src/pluggy/errors.ts";
-import { toAccount, toBill, toCents, toConnection, toInvestment, toTransaction } from "../../src/pluggy/mapper.ts";
+import { ResponseShapeError } from "@cata-centavo/pluggy";
+import { toAccount, toBill, toCents, toConnection, toInvestment, toTransaction } from "@cata-centavo/pluggy";
 import {
   ACCOUNT_PAGE,
   BILL,
@@ -17,7 +17,7 @@ import {
   type WireBill,
   type WireInvestment,
   type WireTransaction,
-} from "../../src/pluggy/wire.ts";
+} from "@cata-centavo/pluggy";
 
 function accountFixture(name: string): WireAccount {
   const raw: unknown = JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));

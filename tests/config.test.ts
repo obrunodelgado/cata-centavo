@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { loadConfig, resolvePaths } from "../src/config.ts";
+import { loadConfig, resolvePaths } from "../apps/cli/src/config.ts";
 
 const ID_A = "aaaaaaaa-1111-2222-3333-444444444444";
 const ID_B = "bbbbbbbb-1111-2222-3333-444444444444";

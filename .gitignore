@@ -32,7 +32,18 @@ reports/
 !.vscode/extensions.json
 *.swp
 *~
+.serena/
 
 # logs
 *.log
 npm-debug.log*
+
+
+
+.nx/cache
+.nx/workspace-data
+.nx/migrate-runs
+
+# Next.js
+.next
+out

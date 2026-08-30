@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collectAccounts } from "../../src/core/accounts.ts";
-import type { BankFailure } from "../../src/core/contracts.ts";
-import { AuthError } from "../../src/pluggy/errors.ts";
+import { collectAccounts } from "@cata-centavo/core";
+import type { BankFailure } from "@cata-centavo/core";
+import { AuthError } from "@cata-centavo/pluggy";
 import { fakeBank, threeConnections } from "../fakes/fake-bank.ts";
 import { fixedClock } from "../fakes/fixed-clock.ts";
 

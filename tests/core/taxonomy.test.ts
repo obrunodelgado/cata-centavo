@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it, test } from "node:test";
 
-import { CATEGORY_IDS, CATEGORIES } from "../../src/core/category.ts";
-import { buildRollup, topCategoryOf, type TaxonomyEntry } from "../../src/core/taxonomy.ts";
-import { TAXONOMY } from "../../src/core/taxonomy-tree.ts";
+import { CATEGORY_IDS, CATEGORIES } from "@cata-centavo/core";
+import { buildRollup, topCategoryOf, type TaxonomyEntry } from "@cata-centavo/core";
+import { TAXONOMY } from "@cata-centavo/core";
 
 describe("the shipped taxonomy", () => {
   it("carries every entry Pluggy served", () => {

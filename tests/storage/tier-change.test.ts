@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-import { aggregate } from "../../src/core/aggregate.ts";
-import type { TransactionFilter } from "../../src/core/contracts.ts";
-import type { Transaction } from "../../src/core/transaction.ts";
-import { openDatabases } from "../../src/storage/db.ts";
-import { createTransactionStore } from "../../src/storage/transactions.ts";
+import { aggregate } from "@cata-centavo/core";
+import type { TransactionFilter } from "@cata-centavo/core";
+import type { Transaction } from "@cata-centavo/core";
+import { openDatabases } from "@cata-centavo/storage";
+import { createTransactionStore } from "@cata-centavo/storage";
 import { fakeLogger } from "../fakes/fake-logger.ts";
 import { tx } from "../fakes/transaction-builder.ts";
 

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CategoryWriter } from "../../../src/core/contracts.ts";
-import { handleSetCategory, handleSetCounterpartyCategory } from "../../../src/mcp/tools/set-category.ts";
+import type { CategoryWriter } from "@cata-centavo/core";
+import { handleSetCategory, handleSetCounterpartyCategory } from "../../../apps/cli/src/mcp/tools/set-category.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 
 function fakeWriter(overrides: Partial<CategoryWriter> = {}): CategoryWriter {

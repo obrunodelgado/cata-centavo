@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { CATEGORIES, CATEGORY_IDS, categoryById, isCategoryId } from "../../src/core/category.ts";
+import { CATEGORIES, CATEGORY_IDS, categoryById, isCategoryId } from "@cata-centavo/core";
 
 /**
  * Pluggy's top-level ids, written out independently of the module under test so

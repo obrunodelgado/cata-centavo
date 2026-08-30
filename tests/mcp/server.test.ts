@@ -7,7 +7,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { investmentPosition } from "../fakes/fake-bank.ts";
 import { fakeSource } from "../fakes/fake-source.ts";
 import { fakeLogger } from "../fakes/fake-logger.ts";
-import { createServer } from "../../src/mcp/server.ts";
+import { createServer } from "../../apps/cli/src/mcp/server.ts";
 
 describe("MCP server", () => {
   it("lists every tool even when the configuration is broken", async () => {

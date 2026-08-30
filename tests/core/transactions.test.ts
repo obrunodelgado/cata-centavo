@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createTransactionReader, type TransactionReader } from "../../src/core/transactions.ts";
-import type { TransactionFilter, TransactionStore } from "../../src/core/contracts.ts";
-import { openDatabase } from "../../src/storage/db.ts";
-import { CACHE_MIGRATIONS } from "../../src/storage/migrations.ts";
-import { createTransactionStore } from "../../src/storage/transactions.ts";
-import { toFailure, AuthError } from "../../src/pluggy/errors.ts";
+import { createTransactionReader, type TransactionReader } from "@cata-centavo/core";
+import type { TransactionFilter, TransactionStore } from "@cata-centavo/core";
+import { openDatabase } from "@cata-centavo/storage";
+import { CACHE_MIGRATIONS } from "@cata-centavo/storage";
+import { createTransactionStore } from "@cata-centavo/storage";
+import { toFailure, AuthError } from "@cata-centavo/pluggy";
 import { account, connection, fakeBank, type FakeBank, type FakeBankOptions } from "../fakes/fake-bank.ts";
 import { fakeLogger } from "../fakes/fake-logger.ts";
 import { tx } from "../fakes/transaction-builder.ts";

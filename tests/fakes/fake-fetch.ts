@@ -1,4 +1,4 @@
-import type { Fetch } from "../../src/pluggy/transport.ts";
+import type { Fetch } from "@cata-centavo/pluggy";
 
 export type RecordedRequest = {
   readonly method: string;

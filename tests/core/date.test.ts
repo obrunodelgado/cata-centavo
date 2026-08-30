@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { localDayOf, todayIn } from "../../src/core/date.ts";
+import { localDayOf, todayIn } from "@cata-centavo/core";
 import { fixedClock } from "../fakes/fixed-clock.ts";
 
 const CASES: readonly { readonly name: string; readonly instant: string; readonly expected: string }[] = [

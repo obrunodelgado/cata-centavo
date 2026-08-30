@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { TransactionFilter } from "../../src/core/contracts.ts";
-import { decodeCursor, encodeCursor } from "../../src/mcp/cursor.ts";
+import type { TransactionFilter } from "@cata-centavo/core";
+import { decodeCursor, encodeCursor } from "../../apps/cli/src/mcp/cursor.ts";
 
 const FILTER: TransactionFilter = {
   accountIds: ["acc-1"],

@@ -4,14 +4,14 @@ import { describe, it } from "node:test";
 import { account, threeConnections } from "../../fakes/fake-bank.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 import { fakeSource } from "../../fakes/fake-source.ts";
-import type { Source } from "../../../src/mcp/source.ts";
+import type { Source } from "../../../apps/cli/src/mcp/source.ts";
 import {
   handleGetAccounts,
   handleGetBalanceByAccount,
   registerGetAccounts,
   registerGetBalanceByAccount,
-} from "../../../src/mcp/tools/accounts.ts";
-import { registerGetBalance } from "../../../src/mcp/tools/balance.ts";
+} from "../../../apps/cli/src/mcp/tools/accounts.ts";
+import { registerGetBalance } from "../../../apps/cli/src/mcp/tools/balance.ts";
 
 function payload(result: { readonly content: readonly { readonly type: string; readonly text?: string }[] }): unknown {
   return JSON.parse(message(result));

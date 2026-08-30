@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { diagnose } from "../../src/core/diagnose.ts";
-import type { BankFailure } from "../../src/core/contracts.ts";
-import { AuthError } from "../../src/pluggy/errors.ts";
+import { diagnose } from "@cata-centavo/core";
+import type { BankFailure } from "@cata-centavo/core";
+import { AuthError } from "@cata-centavo/pluggy";
 import { connection, fakeBank } from "../fakes/fake-bank.ts";
 import { fixedClock } from "../fakes/fixed-clock.ts";
 

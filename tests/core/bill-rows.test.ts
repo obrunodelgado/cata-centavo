@@ -5,8 +5,8 @@ import {
   deriveBillCommitment,
   derivePostedCents,
   partitionBillRows,
-} from "../../src/core/bill-rows.ts";
-import type { DerivedTransaction } from "../../src/core/transaction.ts";
+} from "@cata-centavo/core";
+import type { DerivedTransaction } from "@cata-centavo/core";
 import { derived } from "../fakes/transaction-builder.ts";
 import { bulkPostingCard } from "../fixtures/bulk-posting-card.ts";
 import { materializingCard } from "../fixtures/materializing-card.ts";

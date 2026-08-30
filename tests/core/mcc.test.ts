@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { CATEGORIES, isCategoryId } from "../../src/core/category.ts";
-import { MCC_CATEGORIES, categoryForMcc } from "../../src/core/mcc.ts";
+import { CATEGORIES, isCategoryId } from "@cata-centavo/core";
+import { MCC_CATEGORIES, categoryForMcc } from "@cata-centavo/core";
 
 /** The recon run this table was derived from — see the module docblock. */
 const DERIVATION = { codes: 87, transactions: 1123 };

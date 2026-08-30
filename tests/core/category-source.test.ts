@@ -5,7 +5,7 @@ import {
   resolveCategory,
   type CategorySource,
   type DerivedColumns,
-} from "../../src/core/category-source.ts";
+} from "@cata-centavo/core";
 
 const ALL: DerivedColumns = {
   override: "01000000",

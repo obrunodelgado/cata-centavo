@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { closingCycleOf, identifyOpenCycle, type ClosingDateSource } from "../../src/core/bill.ts";
-import { todayIn } from "../../src/core/date.ts";
+import { closingCycleOf, identifyOpenCycle, type ClosingDateSource } from "@cata-centavo/core";
+import { todayIn } from "@cata-centavo/core";
 import { bill, billFixture, type BillFixture } from "../fakes/bill-builder.ts";
 
 const CYCLE_CASES: readonly {
@@ -34,6 +34,25 @@ const CYCLE_CASES: readonly {
     name: "December rolls the year over",
     fixture: billFixture({ bills: [bill({ closingDate: "2026-12-08", dueDate: "2026-12-15" })], today: "2027-01-05" }),
     expected: { openCycle: "2027-01", source: "last-closed" },
+  },
+  {
+    name: "an open bill still wins over a stored day",
+    fixture: billFixture({
+      bills: [bill({ closingDate: "2026-08-08", dueDate: "2026-08-15" })],
+      storedDay: 20,
+      today: "2026-07-26",
+    }),
+    expected: { openCycle: "2026-08", source: "open-bill" },
+  },
+  {
+    name: "a stored day overrides a closed bill's stale cadence after the closing date changed",
+    fixture: billFixture({
+      bills: [bill({ closingDate: "2026-07-25", dueDate: "2026-08-03" })],
+      storedDay: 10,
+      balanceDueDate: null,
+      today: "2026-08-05",
+    }),
+    expected: { openCycle: "2026-08", source: "local" },
   },
   {
     name: "with no bills the stored day wins over balanceDueDate",

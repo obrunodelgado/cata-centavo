@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { openDatabase } from "../../src/storage/db.ts";
-import { createClosingDayStore } from "../../src/storage/closing-days.ts";
-import { CACHE_MIGRATIONS } from "../../src/storage/migrations.ts";
+import { openDatabase } from "@cata-centavo/storage";
+import { createClosingDayStore } from "@cata-centavo/storage";
+import { CACHE_MIGRATIONS } from "@cata-centavo/storage";
 
 function setupStore() {
   const db = openDatabase({ path: ":memory:", migrations: CACHE_MIGRATIONS, policy: "rebuild" });

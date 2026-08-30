@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-import type { TransactionFilter } from "../../src/core/contracts.ts";
-import { openDatabases } from "../../src/storage/db.ts";
-import { createCategoryWriter } from "../../src/storage/categories.ts";
-import { createTransactionStore } from "../../src/storage/transactions.ts";
+import type { TransactionFilter } from "@cata-centavo/core";
+import { openDatabases } from "@cata-centavo/storage";
+import { createCategoryWriter } from "@cata-centavo/storage";
+import { createTransactionStore } from "@cata-centavo/storage";
 
 import { fakeLogger } from "../fakes/fake-logger.ts";
 import { tx } from "../fakes/transaction-builder.ts";

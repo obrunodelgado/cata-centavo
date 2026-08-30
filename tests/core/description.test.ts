@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { normalizeDescription } from "../../src/core/description.ts";
+import { normalizeDescription } from "@cata-centavo/core";
 
 const CASES: readonly { readonly name: string; readonly input: string; readonly expected: string }[] = [
   { name: "the ADR's own example", input: "PAG*DEIVYN LANCHES LTDA 03/12", expected: "DEIVYN LANCHES" },

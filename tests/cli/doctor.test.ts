@@ -8,8 +8,8 @@ import {
   type DoctorDeps,
   type DoctorReport,
   type LocalState,
-} from "../../src/cli/doctor.ts";
-import { toFailure } from "../../src/pluggy/errors.ts";
+} from "../../apps/cli/src/cli/doctor.ts";
+import { toFailure } from "@cata-centavo/pluggy";
 import { connection, fakeBank, type FakeBankOptions } from "../fakes/fake-bank.ts";
 import { fixedClock } from "../fakes/fixed-clock.ts";
 

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { TransactionReader } from "../../../src/core/transactions.ts";
-import { handleGetTransactionDetails } from "../../../src/mcp/tools/transaction-details.ts";
-import type { ToolDeps } from "../../../src/mcp/tools/result.ts";
+import type { TransactionReader } from "@cata-centavo/core";
+import { handleGetTransactionDetails } from "../../../apps/cli/src/mcp/tools/transaction-details.ts";
+import type { ToolDeps } from "../../../apps/cli/src/mcp/tools/result.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 import { account, connection } from "../../fakes/fake-bank.ts";
 import { fakeSource } from "../../fakes/fake-source.ts";

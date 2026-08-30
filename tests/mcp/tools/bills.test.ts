@@ -3,11 +3,11 @@ import { describe, it } from "node:test";
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import type { ClosingDayStore } from "../../../src/core/contracts.ts";
-import type { DerivedTransaction } from "../../../src/core/transaction.ts";
-import type { LoadResult, TransactionReader } from "../../../src/core/transactions.ts";
-import type { ToolDeps } from "../../../src/mcp/tools/result.ts";
-import { handleGetBills, handleGetBillSummary } from "../../../src/mcp/tools/bills.ts";
+import type { ClosingDayStore } from "@cata-centavo/core";
+import type { DerivedTransaction } from "@cata-centavo/core";
+import type { LoadResult, TransactionReader } from "@cata-centavo/core";
+import type { ToolDeps } from "../../../apps/cli/src/mcp/tools/result.ts";
+import { handleGetBills, handleGetBillSummary } from "../../../apps/cli/src/mcp/tools/bills.ts";
 import { bill } from "../../fakes/bill-builder.ts";
 import { account } from "../../fakes/fake-bank.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";

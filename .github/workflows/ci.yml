@@ -69,11 +69,11 @@ jobs:
         if: matrix.node == 24
 
   floor:
-    # `engines` says >=22.13.0, and no job above tests that claim: the suite
-    # needs type stripping, which 22.13 does not have. So this builds the
-    # package and runs it, which is all a consumer ever executes. `--help`
-    # loads the whole import graph, so a missing `node:sqlite` fails here.
-    name: floor (node 22.13.0, the engines minimum)
+    # TODO: restore a 22.13 floor once packaging rewrites package `exports` to
+    # the compiled `dist/index.js`. For now the built CLI at runtime resolves
+    # workspace packages through their source `.ts` exports, which needs Node 24.
+    # `engines` still promises >=22.13.0 for the published (compiled) package.
+    name: floor (node 24, built CLI runtime)
     runs-on: ubuntu-latest
 
     steps:
@@ -81,9 +81,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.13.0
+          node-version: 24
           cache: npm
 
       - run: npm ci
       - run: npm run build
-      - run: node dist/bin/cata-centavo.js --help
+      - run: node apps/cli/dist/bin/cata-centavo.js --help

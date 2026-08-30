@@ -1,4 +1,4 @@
-import type { LogFields, Logger } from "../../src/core/contracts.ts";
+import type { LogFields, Logger } from "@cata-centavo/core";
 
 export type CapturedLine = {
   readonly level: "debug" | "info" | "warn" | "error";

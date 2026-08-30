@@ -6,8 +6,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { account, connection, threeConnections } from "../../fakes/fake-bank.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 import { fakeSource } from "../../fakes/fake-source.ts";
-import type { Source } from "../../../src/mcp/source.ts";
-import { handleGetBalance, registerGetBalance } from "../../../src/mcp/tools/balance.ts";
+import type { Source } from "../../../apps/cli/src/mcp/source.ts";
+import { handleGetBalance, registerGetBalance } from "../../../apps/cli/src/mcp/tools/balance.ts";
 
 function message(result: { readonly content: readonly { readonly type: string; readonly text?: string }[] }): string {
   const first = result.content[0];

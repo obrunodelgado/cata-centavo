@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-import { MINIMUM_NODE, nodeVersionProblem } from "../../src/cli/node-version.ts";
+import { MINIMUM_NODE, nodeVersionProblem } from "../../apps/cli/src/cli/node-version.ts";
 
 const TOO_OLD = ["18.19.0", "20.11.1", "22.12.0", "22.5.0"];
 const NEW_ENOUGH = ["22.13.0", "22.13.1", "22.14.0", "23.0.0", "24.15.0"];
