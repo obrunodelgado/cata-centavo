@@ -46,6 +46,34 @@ process.exit inside a provider.`,
       to: { path: "^packages/(pluggy|storage)/src/|^apps/cli/src/logging\\.ts$" },
     },
     {
+      name: "client-imports-no-infrastructure",
+      severity: "error",
+      comment: `The frontend trust boundary: the browser never opens a database and never
+talks to Pluggy. Only the API routes (apps/web/app/api/) and the server layer
+(apps/web/lib/server/) may import @cata-centavo/pluggy or @cata-centavo/storage;
+components and the page must consume data exclusively through the API routes.`,
+      from: { path: "^apps/web/(components|app)/", pathNot: "^apps/web/app/api/" },
+      to: { path: "^packages/(pluggy|storage)/src/" },
+    },
+    {
+      name: "client-imports-no-handlers",
+      severity: "error",
+      comment: `Client code consumes the HTTP API (lib/api.ts), never the handler or server
+modules — importing a handler would drag the whole infrastructure into the
+browser bundle through the back door.`,
+      from: { path: "^apps/web/components/" },
+      to: { path: "^apps/web/lib/(handlers|server)/" },
+    },
+    {
+      name: "web-imports-no-cli",
+      severity: "error",
+      comment: `apps/web is a separate package; apps/cli's code (including its config
+helpers) is not importable from it. The few pure functions the web needs are
+duplicated in apps/web/lib/server/config.ts with a cross-reference comment.`,
+      from: { path: "^apps/web/" },
+      to: { path: "^apps/cli/src/" },
+    },
+    {
       name: "src-imports-no-tests",
       severity: "error",
       comment: `Production code reaching into tests/. The fakes live outside packages/ and
@@ -66,14 +94,14 @@ out of packages/ and apps/cli/src/.`,
     {
       name: "no-undeclared-folders",
       severity: "error",
-      comment: `A module under packages/ or apps/cli/src/ outside the folders the ADR lists.
+      comment: `A module under packages/ or apps/ outside the folders the ADR lists.
 No services/, no utils/, no ports/ or adapters/ — the pattern lives in the
 direction of dependencies, not in a folder name. Amend the ADR before adding
 a folder.`,
       from: {},
       to: {
-        path: "^(packages|apps/cli/src)/",
-        pathNot: "^packages/(core|pluggy|storage)/src/|^apps/cli/src/(bin|cli|mcp)/|^apps/cli/src/(config|logging)\\.ts$",
+        path: "^(packages|apps/cli/src|apps/web)/",
+        pathNot: "^packages/(core|pluggy|storage)/src/|^apps/cli/src/(bin|cli|mcp)/|^apps/cli/src/(config|logging)\\.ts$|^apps/web/(app|lib|components)/",
       },
     },
     {
@@ -91,7 +119,7 @@ warning disappears the moment something imports it.`,
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: {
-      extensions: [".ts", ".js", ".mjs", ".json"],
+      extensions: [".ts", ".tsx", ".js", ".mjs", ".json"],
       conditionNames: ["import", "node", "default"],
     },
   },

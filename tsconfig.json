@@ -58,6 +58,8 @@
     "skipLibCheck": true
   },
   // Tests are type-checked too. Each package and app has its own tsconfig.
-  "include": ["packages/*/src", "apps/cli/src", "tests"],
+  // `e2e` is excluded from apps/web's project (which runs under bundler
+  // resolution) but type-checked here under nodenext, like `tests`.
+  "include": ["packages/*/src", "apps/cli/src", "tests", "e2e"],
   "exclude": ["node_modules", "dist", "apps/web"]
 }

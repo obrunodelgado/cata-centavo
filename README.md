@@ -111,6 +111,21 @@ Other clients take the same thing as JSON:
 - `cata-centavo init`: checks that the credentials and every configured connection are readable, and reports which ones are not.
 - `cata-centavo doctor`: a fuller diagnosis, covering connection status, consent state, what is cached locally, and whether the learned categorization map has anything in it yet.
 
+## Web — the Fluxo dashboard
+
+There is also a local web dashboard, **Fluxo**, that reads the same cache and the same Pluggy connections. It is local-first: the browser talks only to the web server's own `/api/*` routes — never to Pluggy, never to a database — and the server reads the same `cache.db`/`data.db` the CLI uses (same XDG paths, same environment variables).
+
+```bash
+nvm use
+# PLUGGY_CLIENT_ID, PLUGGY_CLIENT_SECRET and PLUGGY_ITEM_IDS must be exported,
+# exactly as for the CLI (ADR §4 — no .env file).
+npm run dev:web        # http://localhost:3000
+```
+
+What it shows today: the shell with all five views (Visão geral, Transações, Análises, Orçamentos, Cartões), connection status and consent per bank, and a sync button that runs the same read-through walk `init`'s machinery uses. Budget limits, insights and savings goals are still demo data, visibly tagged.
+
+The automated tests run in three levels: unit and integration (`npm test` — the integration level runs the real composition root against temp SQLite files and a local mock of the Pluggy API), and browser e2e (`npm run e2e`, Playwright, chromium) against a fully synthetic fixture seeded in temp directories — the suite refuses to run against a real wallet and never touches it. `E2E_PROD=1 npm run e2e` runs the same suite against a production build instead of the dev server (what CI does).
+
 ## Categories
 
 Categories come from your provider while your plan includes transaction enrichment. Every sync copies them into `data.db`, which is never dropped, so they survive the day the enrichment stops and the day the cache is rebuilt.

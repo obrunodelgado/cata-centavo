@@ -87,3 +87,27 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: node apps/cli/dist/bin/cata-centavo.js --help
+
+  # The web e2e suite. Node 24 only: the web runs `.ts` sources and the fixture
+  # seed does too. Runs the production server (E2E_PROD=1) against a fully
+  # synthetic fixture — no dev compilation, no real wallet, no network beyond
+  # the local Pluggy mock. The `check` job above already runs unit +
+  # integration (`npm test`), which covers tests/web/.
+  web-e2e:
+    name: web e2e (playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run deps
+      - run: E2E_PROD=1 npm run e2e
