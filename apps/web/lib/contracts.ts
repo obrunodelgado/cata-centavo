@@ -4,6 +4,10 @@
  * so client code can import this module safely.
  */
 
+import type { Range, WindowKind } from "./series.ts";
+
+export type { Range };
+
 export type ConsentState = "active" | "revoked" | "expired" | "unknown";
 
 export type FailureRow = {
@@ -77,3 +81,89 @@ export function json(payload: unknown, status = 200): Response {
     headers: { "content-type": "application/json; charset=utf-8" },
   });
 }
+
+/* ─── /api/overview ─────────────────────────────────────────────── */
+
+export type OverviewWindow = {
+  readonly kind: WindowKind;
+  readonly label: string;
+  readonly unitLabel: string;
+  /** Inclusive bounds, exactly what the server queried. */
+  readonly from: string;
+  readonly to: string;
+};
+
+export type OverviewSeries = {
+  readonly labels: readonly string[];
+  /** Integer cents per bucket, aligned with `labels`. */
+  readonly received: readonly number[];
+  readonly spent: readonly number[];
+};
+
+export type CategorySlice = {
+  readonly categoryId: string | null;
+  readonly name: string;
+  readonly spentCents: number;
+  readonly count: number;
+};
+
+export type AnchorSlice = {
+  readonly received: number;
+  readonly spent: number;
+  /** Percentage, one decimal; null when the period had no income. */
+  readonly savingsRate: number | null;
+  readonly categories: readonly CategorySlice[];
+};
+
+export type BalancesSlice = {
+  readonly cashCents: number;
+  readonly investedCents: number;
+  readonly owedCents: number;
+};
+
+export type RecentRow = {
+  readonly id: string;
+  readonly localDate: string;
+  readonly description: string;
+  readonly categoryId: string | null;
+  readonly categoryName: string | null;
+  readonly accountId: string;
+  readonly paymentMethod: string | null;
+  readonly amountCents: number;
+};
+
+export type InvestmentTypeRow = {
+  readonly name: string;
+  readonly balanceCents: number;
+  readonly pct: number;
+};
+
+export type OverviewInvestments = {
+  readonly totalCents: number;
+  readonly byType: readonly InvestmentTypeRow[];
+  /** A formatted pt-BR delta, or null when it cannot be computed. */
+  readonly monthDelta: string | null;
+};
+
+export type OverviewSource = {
+  readonly connectionId: string;
+  readonly institution: string;
+  /** The newest cached `local_date` for the connection, or null when never synced. */
+  readonly through: string | null;
+};
+
+export type OverviewResponse =
+  | {
+      readonly ok: true;
+      readonly window: OverviewWindow;
+      readonly series: OverviewSeries;
+      readonly anchor: AnchorSlice;
+      readonly balances: BalancesSlice;
+      readonly recent: readonly RecentRow[];
+      readonly investments: OverviewInvestments;
+      /** Demo payload from lib/demo-data.ts; null until ticket 10. */
+      readonly budgetsMini: null;
+      readonly sources: readonly OverviewSource[];
+      readonly unavailable: readonly FailureRow[];
+    }
+  | { readonly ok: false; readonly problems: readonly string[] };

@@ -15,8 +15,7 @@ import { OverviewView } from "../components/views/overview.tsx";
 import { isViewId, TITLES, type ViewId } from "../components/views/registry.ts";
 import { TransactionsView } from "../components/views/transactions.tsx";
 
-const VIEWS_BY_ID: Readonly<Record<ViewId, () => JSX.Element>> = {
-  "visao-geral": OverviewView,
+const VIEWS_BY_ID: Readonly<Record<Exclude<ViewId, "visao-geral">, () => JSX.Element>> = {
   transacoes: TransactionsView,
   analises: AnalysisView,
   orcamentos: BudgetsView,
@@ -32,17 +31,31 @@ function stored(key: string, fallback: string): string {
 
 /** The single-page dashboard shell: sidebar, topbar, one active view, modals. */
 export default function Page() {
-  const [view, setView] = useState<ViewId>(() => {
-    const saved = stored("fluxo.tab", "visao-geral");
-    return isViewId(saved) ? saved : "visao-geral";
-  });
-  const [range, setRange] = useState<Range>(() => (stored("fluxo.range", "6M") as Range));
-  const [anchor, setAnchor] = useState<string>(() => stored("fluxo.anchor", today()));
+  // Hydration-safe localStorage state: the initializers stay at the fallbacks
+  // so the server render and the first client render agree, and the stored
+  // values land in an effect — a lazy initializer would mismatch the SSR HTML
+  // on reload, and React refuses to patch up attribute differences (the Seg's
+  // and sidebar's active classes and aria-* would stay stuck on the server's
+  // values).
+  const [view, setView] = useState<ViewId>("visao-geral");
+  const [range, setRange] = useState<Range>("6M");
+  const [periodStart, setPeriodStart] = useState<string>("");
+  const [periodEnd, setPeriodEnd] = useState<string>("");
+
+  useEffect(() => {
+    const savedView = stored("fluxo.tab", "visao-geral");
+    setView(isViewId(savedView) ? savedView : "visao-geral");
+    setRange(stored("fluxo.range", "6M") as Range);
+    setPeriodStart(stored("fluxo.rangeStart", ""));
+    setPeriodEnd(stored("fluxo.rangeEnd", ""));
+  }, []);
   const [sources, setSources] = useState<SourcesResponse | null>(null);
   const [banksOpen, setBanksOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [justSynced, setJustSynced] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** Bumped after each completed sync; the overview view refetches on change. */
+  const [refreshKey, setRefreshKey] = useState(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -77,11 +90,18 @@ export default function Page() {
   const changeRange = useCallback((next: Range) => {
     setRange(next);
     window.localStorage.setItem("fluxo.range", next);
+    // A preset overrides the custom period: the prototype clears both inputs.
+    setPeriodStart("");
+    setPeriodEnd("");
+    window.localStorage.removeItem("fluxo.rangeStart");
+    window.localStorage.removeItem("fluxo.rangeEnd");
   }, []);
 
-  const changeAnchor = useCallback((next: string) => {
-    setAnchor(next);
-    window.localStorage.setItem("fluxo.anchor", next);
+  const changePeriod = useCallback((start: string, end: string) => {
+    setPeriodStart(start);
+    setPeriodEnd(end);
+    window.localStorage.setItem("fluxo.rangeStart", start);
+    window.localStorage.setItem("fluxo.rangeEnd", end);
   }, []);
 
   const sync = useCallback(async () => {
@@ -95,6 +115,7 @@ export default function Page() {
         const total = response.outcomes.reduce((sum, outcome) => sum + outcome.accounts, 0);
         setJustSynced(true);
         window.setTimeout(() => setJustSynced(false), 5000);
+        setRefreshKey((key) => key + 1);
         showToast(`Sincronização concluída · ${total} conta(s)`);
       } else {
         showToast(`Configuração pendente: ${response.problems.length} problema(s).`);
@@ -106,26 +127,25 @@ export default function Page() {
     }
   }, [syncing, showToast]);
 
-  const ActiveView = VIEWS_BY_ID[view] ?? OverviewView;
+  const ActiveView = view === "visao-geral" ? null : VIEWS_BY_ID[view];
 
   return (
     <div className="app">
       <Sidebar view={view} onNavigate={navigate} sources={sources} onManageBanks={() => setBanksOpen(true)} />
       <div className="main">
-        <Topbar title={TITLES[view]} range={range} anchor={anchor} syncing={syncing} justSynced={justSynced} onRange={changeRange} onAnchor={changeAnchor} onSync={() => { void sync(); }} />
+        <Topbar title={TITLES[view]} range={range} periodStart={periodStart} periodEnd={periodEnd} syncing={syncing} justSynced={justSynced} onRange={changeRange} onPeriod={changePeriod} onSync={() => { void sync(); }} />
         <main className="content">
-          <ActiveView />
+          {ActiveView === null ? (
+            <OverviewView range={range} periodStart={periodStart} periodEnd={periodEnd} refreshKey={refreshKey} />
+          ) : (
+            <ActiveView />
+          )}
         </main>
       </div>
       <ObModal open={banksOpen} onClose={() => setBanksOpen(false)} sources={sources} />
       <Toast message={toast} />
     </div>
   );
-}
-
-function today(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 function errorMessage(error: unknown): string {

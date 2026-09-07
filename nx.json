@@ -3,7 +3,9 @@
   "targetDefaults": {
     "build": {
       "cache": true,
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "typecheck": {
       "cache": true
@@ -41,5 +43,6 @@
         "linter": "none"
       }
     }
-  }
+  },
+  "analytics": false
 }

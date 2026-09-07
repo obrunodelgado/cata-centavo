@@ -1,4 +1,5 @@
-import type { AccountsResponse, SourcesResponse, SyncResponse } from "./contracts.ts";
+import type { AccountsResponse, OverviewResponse, SourcesResponse, SyncResponse } from "./contracts.ts";
+import type { Range } from "./series.ts";
 
 /**
  * The client's only way to reach data: relative URLs to the app's own API
@@ -56,6 +57,28 @@ export function fetchSources(): Promise<SourcesResponse> {
 
 export function fetchAccounts(): Promise<AccountsResponse> {
   return getJson<AccountsResponse>("/api/accounts");
+}
+
+export type OverviewQuery = {
+  readonly range: Range;
+  readonly from?: string;
+  readonly to?: string;
+};
+
+/**
+ * The overview fetch. Empty `from`/`to` are omitted from the query string, and
+ * `to` never travels without `from` — the server answers 400 to that shape,
+ * and a user filling the end input before the start one must not hit it.
+ */
+export function fetchOverview(query: OverviewQuery): Promise<OverviewResponse> {
+  const search = new URLSearchParams({ range: query.range });
+  if (query.from !== undefined && query.from !== "") {
+    search.set("from", query.from);
+    if (query.to !== undefined && query.to !== "") {
+      search.set("to", query.to);
+    }
+  }
+  return getJson<OverviewResponse>(`/api/overview?${search.toString()}`);
 }
 
 export function postSync(): Promise<SyncResponse> {

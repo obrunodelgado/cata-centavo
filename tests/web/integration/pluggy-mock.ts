@@ -44,6 +44,10 @@ export type MockTransaction = {
   readonly category: string | null;
   readonly categoryId: string | null;
   readonly status: string | null;
+  readonly paymentData?: {
+    readonly paymentMethod: string | null;
+    readonly receiver?: { readonly name: string | null; readonly documentNumber?: { readonly value: string | null; readonly type: string | null } | null } | null;
+  };
   readonly creditCardMetadata?: {
     readonly billId?: string;
     readonly installmentNumber?: number;
@@ -243,6 +247,9 @@ function transactionPageRow(transaction: MockTransaction): Record<string, unknow
   };
   if (transaction.creditCardMetadata !== undefined) {
     row["creditCardMetadata"] = transaction.creditCardMetadata;
+  }
+  if (transaction.paymentData !== undefined) {
+    row["paymentData"] = transaction.paymentData;
   }
   return row;
 }

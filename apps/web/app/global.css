@@ -129,6 +129,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
 .date-seg input { width: 118px; padding: 0; border: 0; background: transparent; outline: none; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg); }
 .date-seg input::-webkit-calendar-picker-indicator { opacity: .5; cursor: pointer; }
 .date-seg input::-webkit-datetime-edit { color: var(--fg); }
+.date-seg .date-sep { color: var(--muted); font-size: 11.5px; user-select: none; }
+.date-seg input[type="date"] { width: 98px; } /* two inputs in one pill */
 
 /* ─── cards & KPIs ──────────────────────────────────────────────── */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }

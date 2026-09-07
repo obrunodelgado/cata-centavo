@@ -1,7 +1,7 @@
 import { afterEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 
-import { ApiError, getJson, postJson, postSync } from "../../apps/web/lib/api.ts";
+import { ApiError, fetchOverview, getJson, postJson, postSync } from "../../apps/web/lib/api.ts";
 
 type CapturedCall = { readonly url: string; readonly init: RequestInit };
 
@@ -49,5 +49,27 @@ describe("lib/api — the client fetch layer", () => {
       assert.equal(error.status, 500);
       return true;
     });
+  });
+
+  it("fetchOverview builds the query, omitting empty params", async () => {
+    const calls = captureFetch(() => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await fetchOverview({ range: "6M" });
+    await fetchOverview({ range: "6M", from: "2026-08-05" });
+    await fetchOverview({ range: "6M", from: "2026-08-05", to: "2026-08-30" });
+    await fetchOverview({ range: "1M", from: "", to: "" });
+
+    assert.equal(calls[0]!.url, "/api/overview?range=6M");
+    assert.equal(calls[1]!.url, "/api/overview?range=6M&from=2026-08-05");
+    assert.equal(calls[2]!.url, "/api/overview?range=6M&from=2026-08-05&to=2026-08-30");
+    assert.equal(calls[3]!.url, "/api/overview?range=1M");
+  });
+
+  it("fetchOverview never sends to without from — the server rejects it", async () => {
+    const calls = captureFetch(() => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await fetchOverview({ range: "6M", to: "2026-08-30" });
+
+    assert.equal(calls[0]!.url, "/api/overview?range=6M");
   });
 });

@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 
-import type { Bank, BankFailure, CategoryWriter, ClosingDayStore, Clock, TransactionReader } from "@cata-centavo/core";
+import type { Bank, BankFailure, CategoryWriter, Clock, ClosingDayStore, TransactionReader } from "@cata-centavo/core";
 import { createTransactionReader } from "@cata-centavo/core";
 import { createPluggyClient, toFailure } from "@cata-centavo/pluggy";
 import { createCategoryWriter, createClosingDayStore, createTransactionStore, openDatabases } from "@cata-centavo/storage";
@@ -27,6 +27,8 @@ export type WebSource =
       readonly reader: TransactionReader;
       readonly writer: CategoryWriter;
       readonly closingDays: ClosingDayStore;
+      /** "Today" for window semantics and freshness rules; injectable for tests. */
+      readonly clock: Clock;
       close(): void;
     }
   | {
@@ -87,6 +89,7 @@ export function createSource(env: Env): WebSource {
       reader,
       writer,
       closingDays,
+      clock: systemClock,
       close: () => databases.close(),
     };
   } catch (error) {
