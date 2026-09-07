@@ -347,7 +347,7 @@ describe("handleOverview — series, anchor and balances", () => {
     assert.equal(body.sources.length, 1, "only the healthy connection is a source");
   });
 
-  it("reports recent rows bounded at 10, newest first, with resolved categories", async () => {
+  it("reports recent rows bounded at 6, newest first, with resolved categories", async () => {
     const many = Array.from({ length: 12 }, (_, index) =>
       row({
         id: `t-${index}`,
@@ -362,14 +362,66 @@ describe("handleOverview — series, anchor and balances", () => {
     assert.equal(body.ok, true);
     if (!body.ok) return;
 
-    assert.equal(body.recent.length, 10);
+    assert.equal(body.recent.length, 6);
     assert.equal(body.recent[0]?.localDate, "2026-08-30");
     assert.equal(body.recent[0]?.description, "Gasto 0");
     assert.equal(body.recent[0]?.categoryName, "Moradia");
+    assert.equal(body.recent[0]?.status, "Pago", "a row up to today has already happened");
+    assert.equal(body.recent[0]?.internal, false);
     assert.ok(
       body.recent.every((row, index) => index === 0 || body.recent[index - 1]!.localDate >= row.localDate),
       "newest first",
     );
+  });
+
+  it("derives the tipo: the wire's paymentMethod, else the card account, else an em dash", async () => {
+    const fx = fixture({
+      accounts: [bankAccount({ id: ACC_CASH, amountCents: 1_843_210 })],
+      rows: [
+        row({
+          id: "t1",
+          localDate: "2026-08-12",
+          amountCents: -34_900,
+          description: "Kindle — livro",
+          categoryId: "21000000",
+          accountType: "CREDIT",
+          accountSubtype: "CREDIT_CARD",
+        }),
+        row({ id: "t2", localDate: "2026-08-13", amountCents: -42, description: "PIX — café", paymentMethod: "PIX" }),
+        row({ id: "t3", localDate: "2026-08-14", amountCents: -187_200, description: "Conta de luz", paymentMethod: "BOLETO" }),
+        row({ id: "t3b", localDate: "2026-08-13", amountCents: -10, description: "Desconhecido", paymentMethod: "SOMETHING_NEW" }),
+      ],
+    });
+    const body = await payload(fx.source, { range: "1M" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+
+    assert.deepEqual(
+      body.recent.map((recent) => [recent.id, recent.paymentMethod]),
+      [
+        ["t3", "Boleto"],
+        ["t3b", "SOMETHING_NEW"],
+        ["t2", "PIX"],
+        ["t1", "Cartão"],
+      ],
+      "newest first; an unknown raw value renders as itself; a card row without paymentData is Cartão",
+    );
+  });
+
+  it("marks internal transfers and leaves ordinary spending unmarked", async () => {
+    const fx = fixture({
+      accounts: [bankAccount({ id: ACC_CASH, amountCents: 1_843_210 })],
+      rows: [
+        row({ id: "t1", localDate: "2026-08-12", amountCents: -2_000, description: "TED — Itaú → Nubank", categoryId: "04000000" }),
+        row({ id: "t2", localDate: "2026-08-13", amountCents: -100, description: "Mercado", categoryId: "10000000" }),
+      ],
+    });
+    const body = await payload(fx.source, { range: "1M" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+
+    assert.equal(body.recent.find((recent) => recent.id === "t1")?.internal, true);
+    assert.equal(body.recent.find((recent) => recent.id === "t2")?.internal, false);
   });
 
   it("carries sources with the cache through date and investments with type bars", async () => {
@@ -460,6 +512,26 @@ describe("handleOverview — custom periods (from/to)", () => {
     assert.deepEqual(body.series.received, [0, 200]);
     assert.equal(body.anchor.spent, 100);
     assert.equal(body.anchor.received, 200);
+  });
+
+  it("a row after today is listed as Futuro, never counted in the totals", async () => {
+    const fx = cashFixture([
+      row({ id: "t1", localDate: "2026-08-30", amountCents: -500, description: "Hoje" }),
+      row({ id: "t2", localDate: "2026-09-05", amountCents: -300, description: "Parcela futura" }),
+    ]);
+    const body = await payload(fx.source, { from: "2026-08-30", to: "2026-09-05" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+
+    assert.deepEqual(
+      body.recent.map((recent) => [recent.id, recent.status]),
+      [
+        ["t2", "Futuro"],
+        ["t1", "Pago"],
+      ],
+      "newest first: the future instalment leads, today's row is Pago",
+    );
+    assert.equal(body.anchor.spent, 500, "the future instalment is upcoming, not spent — one bucket per row");
   });
 
   it("inverted from/to are swapped server-side", async () => {

@@ -16,6 +16,10 @@ _Avoid_: Same person transfer (the taxonomy's English label)
 The other party of a transaction, direction-dependent: the receiver on an outbound transfer, the payer on an inbound one. Not to be confused with the wire's literal `receiver`, which is the user themself on inbound rows.
 _Avoid_: receiver (literal wire field)
 
+**Status da transação**:
+Derived at read time, never stored: **Futuro** while the row's `localDate` is after today, **Pago** from that day on. "Pago" means the movement happened — a card purchase is Pago when purchased, even though settling the bill is a separate transaction (and an internal transfer, ADR-0003). An unpaid boleto never reaches the cache at all; future-dated rows are forecast instalments, not pending payments.
+_Avoid_: Pendente (the prototype's status for unpaid boletos — the cache never holds one)
+
 **Documento do titular**:
 The holder's own CPF or CNPJ, used to recognise an internal transfer when the counterparty is the holder themself.
 _Avoid_: documento pessoal

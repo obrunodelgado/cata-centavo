@@ -11,6 +11,7 @@ import { DonutChart } from "../charts/donut-chart.tsx";
 import { FlowChart, type FlowDatum } from "../charts/flow-chart.tsx";
 import { Sparkline } from "../charts/sparkline.tsx";
 import { Button } from "../ui/button.tsx";
+import { Modal } from "../ui/modal.tsx";
 import { Pill } from "../ui/pill.tsx";
 
 /**
@@ -29,6 +30,8 @@ type OverviewViewProps = {
   readonly periodEnd: string;
   /** Bumped by the shell after a sync so the view refetches. */
   readonly refreshKey: number;
+  /** Where "Ver todas" lands — the transactions view. */
+  readonly onVerTodas: () => void;
 };
 
 /** The series palette keyed by top-level category; anything else is `--c7`. */
@@ -44,7 +47,7 @@ const CATEGORY_COLOR: Readonly<Record<string, string>> = {
 
 const INVESTMENT_COLORS = ["var(--c1)", "var(--c4)", "var(--c2)", "var(--c6)", "var(--c7)"] as const;
 
-export function OverviewView({ range, periodStart, periodEnd, refreshKey }: OverviewViewProps) {
+export function OverviewView({ range, periodStart, periodEnd, refreshKey, onVerTodas }: OverviewViewProps) {
   const [payload, setPayload] = useState<OverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,11 +108,15 @@ export function OverviewView({ range, periodStart, periodEnd, refreshKey }: Over
     );
   }
 
-  return <OverviewLoaded payload={payload} />;
+  return <OverviewLoaded payload={payload} onVerTodas={onVerTodas} />;
 }
 
-function OverviewLoaded({ payload }: { readonly payload: Extract<OverviewResponse, { readonly ok: true }> }) {
+function OverviewLoaded({ payload, onVerTodas }: {
+  readonly payload: Extract<OverviewResponse, { readonly ok: true }>;
+  readonly onVerTodas: () => void;
+}) {
   const { window, series, anchor, balances, recent, investments, sources, unavailable } = payload;
+  const [detail, setDetail] = useState<RecentRow | null>(null);
 
   const net = anchor.received - anchor.spent;
   const receivedDelta = bucketDelta(series.received);
@@ -203,11 +210,11 @@ function OverviewLoaded({ payload }: { readonly payload: Extract<OverviewRespons
               <div className="card-title">Transações recentes</div>
               <div className="card-sub">{window.label === "hoje" ? "Hoje" : `Últimos movimentos · ${window.label}`}</div>
             </div>
-            <Button variant="ghost" className="btn-arrow" disabled title="Disponível em breve">
+            <Button variant="ghost" className="btn-arrow" onClick={onVerTodas}>
               Ver todas
             </Button>
           </div>
-          <RecentTable rows={recent} />
+          <RecentTable rows={recent} onSelect={setDetail} />
         </div>
         <div className="card" data-od-id="orcamentos-mini">
           <div className="card-head">
@@ -313,6 +320,8 @@ function OverviewLoaded({ payload }: { readonly payload: Extract<OverviewRespons
           </div>
         </div>
       </div>
+
+      <RecentDetailModal row={detail} onClose={() => setDetail(null)} />
     </section>
   );
 }
@@ -410,10 +419,13 @@ function categoryColor(categoryId: string | null): string {
   return CATEGORY_COLOR[categoryId] ?? "var(--c7)";
 }
 
-function RecentTable({ rows }: { readonly rows: readonly RecentRow[] }) {
-  if (rows.length === 0) {
-    return <div className="chart-empty">Nenhuma transação neste período</div>;
-  }
+function RecentTable({
+  rows,
+  onSelect,
+}: {
+  readonly rows: readonly RecentRow[];
+  readonly onSelect: (row: RecentRow) => void;
+}) {
   return (
     <div className="tbl-scroll">
       <table className="ds-table">
@@ -422,34 +434,97 @@ function RecentTable({ rows }: { readonly rows: readonly RecentRow[] }) {
             <th>Data</th>
             <th>Descrição</th>
             <th>Tipo</th>
+            <th>Status</th>
             <th className="num-col">Valor</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} tabIndex={0} role="button" aria-label={`Ver detalhes: ${row.description}`}>
-              <td className="num" style={{ whiteSpace: "nowrap" }}>
-                {dayMonth(row.localDate)}
-              </td>
-              <td>
-                <div className="tx-desc">{row.description}</div>
-                <div className="tx-cat">
-                  <i style={{ background: categoryColor(row.categoryId) }}></i>
-                  {row.categoryName ?? "Sem categoria"}
-                </div>
-              </td>
-              <td>
-                <span className={`tx-type ${tipoClass(row)}`}>{row.paymentMethod ?? "—"}</span>
-              </td>
-              <td className={`num-col ${row.amountCents > 0 ? "val-pos" : "val-neg"}`}>
-                {row.amountCents > 0 ? "+" : ""}
-                {centsToBRL(row.amountCents)}
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5} style={{ textAlign: "center", color: "var(--muted)", padding: "24px 0" }}>
+                Sem movimentações neste período.
               </td>
             </tr>
-          ))}
+          ) : (
+            rows.map((row) => <RecentRowItem key={row.id} row={row} onSelect={onSelect} />)
+          )}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function RecentRowItem({
+  row,
+  onSelect,
+}: {
+  readonly row: RecentRow;
+  readonly onSelect: (row: RecentRow) => void;
+}) {
+  return (
+    <tr
+      tabIndex={0}
+      role="button"
+      aria-label={`Ver detalhes: ${row.description}`}
+      onClick={() => onSelect(row)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(row);
+        }
+      }}
+    >
+      <td className="num" style={{ whiteSpace: "nowrap" }}>
+        {dayMonthShort(row.localDate)}
+      </td>
+      <td>
+        <div className="tx-desc">{row.description}</div>
+        <div className="tx-cat">
+          <i style={{ background: categoryColor(row.categoryId) }}></i>
+          {row.categoryName ?? "Sem categoria"}
+          {row.internal ? <span className="tag" style={{ marginLeft: 6 }}>interna</span> : null}
+        </div>
+      </td>
+      <td>
+        <span className={`tx-type ${tipoClass(row)}`}>{row.paymentMethod}</span>
+      </td>
+      <td>
+        <span className="tag">{row.status}</span>
+      </td>
+      <td className={`num-col ${row.amountCents > 0 ? "val-pos" : "val-neg"}`}>
+        {row.amountCents > 0 ? "+" : ""}
+        {centsToBRL(row.amountCents)}
+      </td>
+    </tr>
+  );
+}
+
+/** Read-only detail: the model's modal minus the editable fields that ticket 07 owns. */
+function RecentDetailModal({ row, onClose }: { readonly row: RecentRow | null; readonly onClose: () => void }) {
+  if (row === null) {
+    return null;
+  }
+  const positive = row.amountCents > 0;
+  return (
+    <Modal
+      title={row.description}
+      sub={`${dayMonthShort(row.localDate)} · ${row.categoryName ?? "Sem categoria"} · ${row.paymentMethod}`}
+      open
+      onClose={onClose}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
+        <span className="meta">Valor</span>
+        <span className={`num ${positive ? "val-pos" : "val-neg"}`} style={{ fontSize: 22, fontWeight: 650 }}>
+          {positive ? "+" : ""}
+          {centsToBRL(row.amountCents)}
+        </span>
+      </div>
+      <div className="modal-actions">
+        <Button variant="secondary" onClick={onClose}>
+          Fechar
+        </Button>
+      </div>
+    </Modal>
   );
 }
 
@@ -465,6 +540,13 @@ function tipoClass(row: RecentRow): string {
 
 function dayMonth(localDate: string): string {
   return `${localDate.slice(8, 10)}/${localDate.slice(5, 7)}`;
+}
+
+const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"] as const;
+
+/** "19 mar" — the prototype's short date for the recent list. */
+function dayMonthShort(localDate: string): string {
+  return `${Number(localDate.slice(8, 10))} ${MONTHS_SHORT[Number(localDate.slice(5, 7)) - 1] ?? "?"}`;
 }
 
 function BudgetRow({

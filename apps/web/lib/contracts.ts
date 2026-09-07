@@ -128,8 +128,13 @@ export type RecentRow = {
   readonly categoryId: string | null;
   readonly categoryName: string | null;
   readonly accountId: string;
-  readonly paymentMethod: string | null;
+  /** Display label for the Tipo column: the wire's payment method, "Cartão" on card rows, "—" when unknown. */
+  readonly paymentMethod: string;
   readonly amountCents: number;
+  /** Derived at request time from `localDate` against today — never stored. */
+  readonly status: "Futuro" | "Pago";
+  /** An internal transfer (ADR-0003): displayed with the "interna" tag, never a total. */
+  readonly internal: boolean;
 };
 
 export type InvestmentTypeRow = {

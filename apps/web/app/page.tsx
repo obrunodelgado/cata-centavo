@@ -136,7 +136,13 @@ export default function Page() {
         <Topbar title={TITLES[view]} range={range} periodStart={periodStart} periodEnd={periodEnd} syncing={syncing} justSynced={justSynced} onRange={changeRange} onPeriod={changePeriod} onSync={() => { void sync(); }} />
         <main className="content">
           {ActiveView === null ? (
-            <OverviewView range={range} periodStart={periodStart} periodEnd={periodEnd} refreshKey={refreshKey} />
+            <OverviewView
+              range={range}
+              periodStart={periodStart}
+              periodEnd={periodEnd}
+              refreshKey={refreshKey}
+              onVerTodas={() => navigate("transacoes")}
+            />
           ) : (
             <ActiveView />
           )}
