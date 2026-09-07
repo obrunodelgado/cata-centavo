@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { CONSENT_PAGE, INVESTMENT_PAGE, ITEM, parseCategoryPage, TRANSACTION_PAGE } from "../../src/pluggy/wire.ts";
+import { CONSENT_PAGE, INVESTMENT_PAGE, ITEM, parseCategoryPage, TRANSACTION_PAGE } from "@cata-centavo/pluggy";
 
 function consentFixture(): unknown {
   return JSON.parse(readFileSync(new URL("../fixtures/consent.json", import.meta.url), "utf8"));

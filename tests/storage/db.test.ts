@@ -5,8 +5,8 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { after, describe, it } from "node:test";
 
-import { openDatabase, openDatabases, schemaVersion, SchemaTooNewError, targetVersion } from "../../src/storage/db.ts";
-import { CACHE_MIGRATIONS, DATA_MIGRATIONS, type Migration } from "../../src/storage/migrations.ts";
+import { openDatabase, openDatabases, schemaVersion, SchemaTooNewError, targetVersion } from "@cata-centavo/storage";
+import { CACHE_MIGRATIONS, DATA_MIGRATIONS, type Migration } from "@cata-centavo/storage";
 
 
 const V1: Migration = { to: 1, up: "CREATE TABLE note (id INTEGER PRIMARY KEY, body TEXT)" };
@@ -171,7 +171,7 @@ describe("openDatabases", () => {
     const cacheDb = tempPath("cache.db");
     const dataDb = tempPath("data.db");
 
-    const dbs = openDatabases({ cacheDb, dataDb, logFile: tempPath("app.log") });
+    const dbs = openDatabases({ cacheDb, dataDb });
 
     assert.equal(schemaVersion(dbs.db), targetVersion(CACHE_MIGRATIONS));
     assert.equal(schemaVersion(dbs.db, "userdata"), targetVersion(DATA_MIGRATIONS));

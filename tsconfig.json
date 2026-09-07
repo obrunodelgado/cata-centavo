@@ -9,6 +9,19 @@
     // "type": "module", each package's "exports" field, and CJS/ESM interop.
     "module": "nodenext",
 
+    // Path mappings for workspace packages. They keep tsc fast when the
+    // "exports" wildcard does not resolve a .ts subpath on its own.
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@cata-centavo/core": ["packages/core/src/index.ts"],
+      "@cata-centavo/core/*": ["packages/core/src/*"],
+      "@cata-centavo/pluggy": ["packages/pluggy/src/index.ts"],
+      "@cata-centavo/pluggy/*": ["packages/pluggy/src/*"],
+      "@cata-centavo/storage": ["packages/storage/src/index.ts"],
+      "@cata-centavo/storage/*": ["packages/storage/src/*"]
+    },
+
     // Without this, tsc loads the @types of every package in node_modules.
     "types": ["node"],
 
@@ -44,6 +57,9 @@
     "declaration": false,
     "skipLibCheck": true
   },
-  // Tests are type-checked too. tsconfig.build.json narrows this to "src".
-  "include": ["src", "tests"]
+  // Tests are type-checked too. Each package and app has its own tsconfig.
+  // `e2e` is excluded from apps/web's project (which runs under bundler
+  // resolution) but type-checked here under nodenext, like `tests`.
+  "include": ["packages/*/src", "apps/cli/src", "tests", "e2e"],
+  "exclude": ["node_modules", "dist", "apps/web"]
 }

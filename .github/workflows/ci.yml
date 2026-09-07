@@ -19,7 +19,7 @@ jobs:
         # partway through the 22 line. Pinning this to an early 22.x would make
         # `npm test` report "# tests 0" and exit 0. The `floor` job below covers
         # the oldest supported version instead, without running the suite.
-        node: [22, 24]
+        node: [24]
 
     name: check (node ${{ matrix.node }})
 
@@ -69,11 +69,11 @@ jobs:
         if: matrix.node == 24
 
   floor:
-    # `engines` says >=22.13.0, and no job above tests that claim: the suite
-    # needs type stripping, which 22.13 does not have. So this builds the
-    # package and runs it, which is all a consumer ever executes. `--help`
-    # loads the whole import graph, so a missing `node:sqlite` fails here.
-    name: floor (node 22.13.0, the engines minimum)
+    # TODO: restore a 22.13 floor once packaging rewrites package `exports` to
+    # the compiled `dist/index.js`. For now the built CLI at runtime resolves
+    # workspace packages through their source `.ts` exports, which needs Node 24.
+    # `engines` still promises >=22.13.0 for the published (compiled) package.
+    name: floor (node 24, built CLI runtime)
     runs-on: ubuntu-latest
 
     steps:
@@ -81,9 +81,33 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.13.0
+          node-version: 24
           cache: npm
 
       - run: npm ci
       - run: npm run build
-      - run: node dist/bin/cata-centavo.js --help
+      - run: node apps/cli/dist/bin/cata-centavo.js --help
+
+  # The web e2e suite. Node 24 only: the web runs `.ts` sources and the fixture
+  # seed does too. Runs the production server (E2E_PROD=1) against a fully
+  # synthetic fixture — no dev compilation, no real wallet, no network beyond
+  # the local Pluggy mock. The `check` job above already runs unit +
+  # integration (`npm test`), which covers tests/web/.
+  web-e2e:
+    name: web e2e (playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run deps
+      - run: E2E_PROD=1 npm run e2e

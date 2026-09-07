@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { consentState } from "../../src/core/consent.ts";
-import type { Consent } from "../../src/core/contracts.ts";
+import { consentState } from "@cata-centavo/core";
+import type { Consent } from "@cata-centavo/core";
 
 const NOW = new Date("2026-07-25T12:00:00.000Z");
 const PAST = new Date("2026-07-20T12:00:00.000Z");

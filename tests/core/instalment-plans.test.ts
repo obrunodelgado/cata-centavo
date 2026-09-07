@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { deriveInstalmentPlans, type CycleSource, type FigureSource, type PlanStatus } from "../../src/core/instalment-plans.ts";
-import type { Bill } from "../../src/core/bill.ts";
-import type { DerivedTransaction } from "../../src/core/transaction.ts";
+import { deriveInstalmentPlans, type CycleSource, type FigureSource, type PlanStatus } from "@cata-centavo/core";
+import type { Bill } from "@cata-centavo/core";
+import type { DerivedTransaction } from "@cata-centavo/core";
 import { bill } from "../fakes/bill-builder.ts";
 import { renamedPlanCard } from "../fixtures/renamed-plan-card.ts";
 import { annualFeeCard } from "../fixtures/annual-fee-card.ts";

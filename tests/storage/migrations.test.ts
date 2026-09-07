@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { MCC_CATEGORIES } from "../../src/core/mcc.ts";
-import { openDatabase } from "../../src/storage/db.ts";
-import { CACHE_MIGRATIONS, DATA_MIGRATIONS } from "../../src/storage/migrations.ts";
+import { MCC_CATEGORIES } from "@cata-centavo/core";
+import { openDatabase } from "@cata-centavo/storage";
+import { CACHE_MIGRATIONS, DATA_MIGRATIONS } from "@cata-centavo/storage";
 
 describe("CACHE_MIGRATIONS", () => {
   it("seeds one row per MCC mapping", () => {

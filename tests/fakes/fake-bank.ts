@@ -1,9 +1,9 @@
-import type { Account } from "../../src/core/account.ts";
-import type { Bill } from "../../src/core/bill.ts";
-import type { InvestmentPosition } from "../../src/core/investment.ts";
-import type { Bank, Connection, Consent } from "../../src/core/contracts.ts";
-import type { Transaction } from "../../src/core/transaction.ts";
-import { AuthError, NotFoundError } from "../../src/pluggy/errors.ts";
+import type { Account } from "@cata-centavo/core";
+import type { Bill } from "@cata-centavo/core";
+import type { InvestmentPosition } from "@cata-centavo/core";
+import type { Bank, Connection, Consent } from "@cata-centavo/core";
+import type { Transaction } from "@cata-centavo/core";
+import { AuthError, NotFoundError } from "@cata-centavo/pluggy";
 
 export type FakeBankOptions = {
   readonly connections?: readonly Connection[];

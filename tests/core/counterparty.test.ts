@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CategoryId } from "../../src/core/category.ts";
-import { isCnpj, isDocument, learnCounterparties } from "../../src/core/counterparty.ts";
+import type { CategoryId } from "@cata-centavo/core";
+import { isCnpj, isDocument, learnCounterparties } from "@cata-centavo/core";
 
 describe("counterparty document validation", () => {
   const DOCUMENT_CASES: readonly { readonly name: string; readonly value: string; readonly valid: boolean; readonly learnable: boolean }[] = [

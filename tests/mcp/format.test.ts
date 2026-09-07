@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { prune, toDecimal } from "../../src/mcp/format.ts";
+import { prune, toDecimal } from "../../apps/cli/src/mcp/format.ts";
 
 describe("toDecimal", () => {
   const money = [

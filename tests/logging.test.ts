@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createLogger } from "../src/logging.ts";
+import { createLogger } from "../apps/cli/src/logging.ts";
 
 describe("createLogger", () => {
   it("never writes to stdout, because stdout is the JSON-RPC channel (ADR §4)", () => {

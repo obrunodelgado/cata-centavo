@@ -4,8 +4,8 @@ import { describe, it } from "node:test";
 import type {
   InvestmentCursorFilter,
   InvestmentCursorPosition,
-} from "../../src/mcp/investment-cursor.ts";
-import { decodeCursor, encodeCursor } from "../../src/mcp/investment-cursor.ts";
+} from "../../apps/cli/src/mcp/investment-cursor.ts";
+import { decodeCursor, encodeCursor } from "../../apps/cli/src/mcp/investment-cursor.ts";
 
 const POSITION: InvestmentCursorPosition = {
   currency: "BRL",

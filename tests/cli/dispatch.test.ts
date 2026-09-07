@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { COMMANDS, resolveInvocation } from "../../src/cli/dispatch.ts";
+import { COMMANDS, resolveInvocation } from "../../apps/cli/src/cli/dispatch.ts";
 
 describe("resolveInvocation", () => {
   it("falls back to the MCP server when given no argument (ADR §4)", () => {

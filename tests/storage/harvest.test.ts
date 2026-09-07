@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-import { openDatabases } from "../../src/storage/db.ts";
-import { createTransactionStore } from "../../src/storage/transactions.ts";
+import { openDatabases } from "@cata-centavo/storage";
+import { createTransactionStore } from "@cata-centavo/storage";
 import { fakeLogger } from "../fakes/fake-logger.ts";
 import { tx } from "../fakes/transaction-builder.ts";
 

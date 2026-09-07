@@ -15,13 +15,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 nvm use                  # reads .nvmrc → v24.15.0
 
-npm run dev              # run the CLI from source (node executes .ts directly)
+npm run dev:cli          # run the CLI from source (node executes .ts directly)
+npm run dev:web          # nx dev web — Next.js dev server
 npm run typecheck        # tsc --noEmit — this is the linter, see below
 npm run lint             # eslint as a sensor: warnings inform, errors fail
 npm run deps             # dependency-cruiser — architecture rules, errors fail
 npm test                 # node --test, finds tests/**/*.test.ts
 npm run test:watch
-npm run build            # tsc -p tsconfig.build.json → dist/
+npm run build            # npm run build:cli && npm run build:web
+npm run build:cli        # tsc -b apps/cli/tsconfig.build.json → apps/cli/dist/
+npm run build:web        # nx build web
 ```
 
 On demand, not part of the sequence above:
@@ -63,7 +66,7 @@ Design and the traps found on Linux: `docs/plans/2026-07-26-sensors-sidecar-desi
 
 - **Node 24 (`.nvmrc` = v24.15.0)**, native type stripping, no `tsx`/`ts-node`, no build step in dev.
 - **Development needs Node 24; the published package needs only 22.13** (`engines`). The two floors differ because the package ships compiled `.js` and nobody installing it strips types. Do not "fix" the mismatch by raising `engines` — and do not lower `.nvmrc`, because Node 22.13 cannot run `.ts` at all: `node --test` there reports `# tests 0` and exits 0. ADR §3.
-- **No `enum`, no parameter properties** (`constructor(private x)`). `erasableSyntaxOnly` rejects them at tsc time because they crash at runtime with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`. Use a `const` object plus a derived union — see `src/cli/dispatch.ts` for the pattern.
+- **No `enum`, no parameter properties** (`constructor(private x)`). `erasableSyntaxOnly` rejects them at tsc time because they crash at runtime with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`. Use a `const` object plus a derived union — see `apps/cli/src/cli/dispatch.ts` for the pattern.
 - **Source files import `.ts` extensions** (`from "./balance.ts"`). `rewriteRelativeImportExtensions` turns them into `.js` on build.
 - **Nothing but JSON-RPC may reach stdout.** In server mode stdout *is* the protocol channel. Every human-facing message, log line and error goes to stderr, always — including any fallback path in a logger.
 - `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` are on deliberately. The first guards the pagination loops where a bad index means missing money; the second enforces "absence is `NULL`, never `''`".
@@ -71,19 +74,20 @@ Design and the traps found on Linux: `docs/plans/2026-07-26-sensors-sidecar-desi
 ## Architecture
 
 ```
-src/
+packages/
 ├── core/          business rules. no fetch, no sqlite, no SDK
 │   └── contracts.ts    interfaces core requires of whoever serves it
 ├── pluggy/        client.ts · transport.ts · mapper.ts · errors.ts · wire.ts
-├── storage/       db.ts · schema.sql · store.ts
-├── mcp/           server.ts · format.ts · tools/
-├── cli/           init.ts · doctor.ts · dispatch.ts
-├── config.ts
-└── bin/cata-centavo.ts
-tests/             mirrors src/, plus fakes/ and fixtures/
+└── storage/       db.ts · schema.sql · stores
+
+apps/
+├── cli/           config.ts · mcp/ · cli/ · bin/cata-centavo.ts
+└── web/           Next.js app (placeholder UI)
+
+tests/             mirrors packages/, plus fakes/ and fixtures/
 ```
 
-**The rule holding it together:** `src/core/` imports nothing from `src/pluggy/`, `src/storage/` or `src/mcp/`. Contracts live in `core/contracts.ts` because the interface belongs to the consumer, not the implementer. `.dependency-cruiser.js` enforces this, along with the cycle, orphan and composition-root rules that only exist in the graph.
+**The rule holding it together:** `packages/core/` imports nothing from `packages/pluggy/`, `packages/storage/`, `apps/cli/src/mcp/` or `apps/cli/src/cli/`. Contracts live in `packages/core/src/contracts.ts` because the interface belongs to the consumer, not the implementer. `.dependency-cruiser.js` enforces this, along with the cycle, orphan and composition-root rules that only exist in the graph.
 
 No `services/`, no `utils/`, no `ports/`/`adapters/`. Tests live in `tests/`, not colocated, which is what lets the build tsconfig be `include: ["src"]`.
 
@@ -118,13 +122,13 @@ Run text through the `humanizer` skill when writing prose (docblocks, README, PR
 - **TDD, always.** Red → green → refactor. Write the failing test before the implementation.
 - **Look for an existing test file before creating a new one.** `tests/` mirrors `src/`; a new case usually belongs in a file that already exists.
 - **Prefer table tests** over several near-identical `it()` blocks: one array of cases, one loop, one assertion body. `tests/cli/dispatch.test.ts` iterates `Object.values(COMMANDS)` in that spirit.
-- Pure logic (normalization, category resolution, mapping) is tested in `tests/core/` with no I/O.
+- Pure logic (normalization, category resolution, mapping) is tested in `tests/core/` and `tests/pluggy/` with no I/O.
 - Storage is tested against SQLite `:memory:`, including the two-file `ATTACH` form.
 - External dependencies are faked from `tests/fakes/` — `fake-bank.ts`, `fixed-clock.ts`, `fake-store.ts`. Those live outside `src/` precisely so production code cannot import them.
 - `t.mock.timers` covers the injectable `Clock` and freshness rules; no fake-timer library.
 - Capture raw Pluggy JSON as fixtures in `tests/fixtures/` — but the repo is public, so never commit real statements.
 - **Every tool parameter needs a test proving it reaches the request.** The prior Go implementation shipped a declared filter that was parsed, validated and then never read.
-- **`npm run mutation` is what checks the rule above.** A green suite proves the tests ran, not that they assert. Run it when you have added or changed tests in `src/core/` or `src/pluggy/`, read the survivors, and either write the missing assertion or suppress with a reason (`// Stryker disable next-line <Mutator>: why`). It never fails the build. See `docs/plans/2026-07-26-mutation-testing-design.md`.
+- **`npm run mutation` is what checks the rule above.** A green suite proves the tests ran, not that they assert. Run it when you have added or changed tests in `packages/core/` or `packages/pluggy/`, read the survivors, and either write the missing assertion or suppress with a reason (`// Stryker disable next-line <Mutator>: why`). It never fails the build. See `docs/plans/2026-07-26-mutation-testing-design.md`.
 
 ### MCP tool development
 
@@ -199,3 +203,17 @@ Always use English in the code, comments and documentation.
 
 # GIT
 Don'e EVER use git worktrees unless I ask you to.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `MarcusXavierr/cata-centavo`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.

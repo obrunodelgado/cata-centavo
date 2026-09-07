@@ -32,7 +32,25 @@ reports/
 !.vscode/extensions.json
 *.swp
 *~
+.serena/
 
 # logs
 *.log
 npm-debug.log*
+
+
+
+.nx/cache
+.nx/workspace-data
+.nx/migrate-runs
+
+# Next.js
+.next
+out
+
+# Playwright
+test-results/
+playwright-report/
+e2e/.e2e-env.json
+
+gitleaks-report.json

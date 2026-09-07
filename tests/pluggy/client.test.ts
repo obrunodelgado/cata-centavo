@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { Account } from "../../src/core/account.ts";
-import { createPluggyClient } from "../../src/pluggy/client.ts";
-import { RATE_LIMIT_RETRIES, type RateLimiter } from "../../src/pluggy/transport.ts";
+import type { Account } from "@cata-centavo/core";
+import { createPluggyClient } from "@cata-centavo/pluggy";
+import { RATE_LIMIT_RETRIES, type RateLimiter } from "@cata-centavo/pluggy";
 import {
   AuthError,
   HttpError,
@@ -12,7 +12,7 @@ import {
   RateLimitError,
   ResponseShapeError,
   toFailure,
-} from "../../src/pluggy/errors.ts";
+} from "@cata-centavo/pluggy";
 import { fakeFetch, fakeJwt, json, type FakeFetch, type Handler } from "../fakes/fake-fetch.ts";
 import { fixedClock, type FixedClock } from "../fakes/fixed-clock.ts";
 import { fakeLogger } from "../fakes/fake-logger.ts";

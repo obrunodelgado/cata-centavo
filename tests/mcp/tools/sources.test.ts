@@ -4,8 +4,8 @@ import { describe, it } from "node:test";
 import { connection, threeConnections } from "../../fakes/fake-bank.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 import { fakeSource } from "../../fakes/fake-source.ts";
-import type { Source } from "../../../src/mcp/source.ts";
-import { handleListSources, registerListSources } from "../../../src/mcp/tools/sources.ts";
+import type { Source } from "../../../apps/cli/src/mcp/source.ts";
+import { handleListSources, registerListSources } from "../../../apps/cli/src/mcp/tools/sources.ts";
 
 function payload(result: { readonly content: readonly { readonly type: string; readonly text?: string }[] }): {
   sources: readonly Record<string, unknown>[];

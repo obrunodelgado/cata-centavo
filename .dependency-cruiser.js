@@ -20,58 +20,88 @@ that genuinely owns it, so one direction survives and the other dies.`,
     {
       name: "core-imports-no-infrastructure",
       severity: "error",
-      comment: `src/core/ holds business rules and imports no infrastructure (ADR §6).
+      comment: `packages/core/ holds business rules and imports no infrastructure (ADR §6).
 The contract belongs to its consumer: declare what you need as a type in
 core/contracts.ts and receive the implementation as a parameter.`,
-      from: { path: "^src/core/" },
-      to: { path: "^src/(pluggy|storage|mcp)/" },
+      from: { path: "^packages/core/src/" },
+      to: { path: "^packages/(pluggy|storage)/src/|^apps/cli/src/mcp/" },
     },
     {
       name: "core-imports-no-packages",
       severity: "error",
-      comment: `src/core/ is pure. No SDK, no client, no driver — only zod, which the ADR
+      comment: `packages/core/ is pure. No SDK, no client, no driver — only zod, which the ADR
 already promises to core/category.ts. If you need what a package does, put
 the type in core/contracts.ts and let bin/ inject the implementation.`,
-      from: { path: "^src/core/" },
+      from: { path: "^packages/core/src/" },
       to: { dependencyTypes: ["npm"], pathNot: "node_modules/zod/" },
     },
     {
       name: "only-bin-builds-infrastructure",
       severity: "error",
-      comment: `Only src/bin/ constructs infrastructure. cli/ and mcp/ receive Bank, Store
-and Logger as parameters, which is what keeps init and doctor testable and
-what lets ADR §16.4 forbid process.exit inside a provider.`,
-      from: { path: "^src/(cli|mcp)/" },
-      to: { path: "^src/(pluggy|storage)/|^src/logging\\.ts$" },
+      comment: `Only apps/cli/src/bin/ constructs infrastructure. apps/cli/src/cli/ and
+apps/cli/src/mcp/ receive Bank, Store and Logger as parameters, which is
+what keeps init and doctor testable and what lets ADR §16.4 forbid
+process.exit inside a provider.`,
+      from: { path: "^apps/cli/src/(cli|mcp)/" },
+      to: { path: "^packages/(pluggy|storage)/src/|^apps/cli/src/logging\\.ts$" },
+    },
+    {
+      name: "client-imports-no-infrastructure",
+      severity: "error",
+      comment: `The frontend trust boundary: the browser never opens a database and never
+talks to Pluggy. Only the API routes (apps/web/app/api/) and the server layer
+(apps/web/lib/server/) may import @cata-centavo/pluggy or @cata-centavo/storage;
+components and the page must consume data exclusively through the API routes.`,
+      from: { path: "^apps/web/(components|app)/", pathNot: "^apps/web/app/api/" },
+      to: { path: "^packages/(pluggy|storage)/src/" },
+    },
+    {
+      name: "client-imports-no-handlers",
+      severity: "error",
+      comment: `Client code consumes the HTTP API (lib/api.ts), never the handler or server
+modules — importing a handler would drag the whole infrastructure into the
+browser bundle through the back door.`,
+      from: { path: "^apps/web/components/" },
+      to: { path: "^apps/web/lib/(handlers|server)/" },
+    },
+    {
+      name: "web-imports-no-cli",
+      severity: "error",
+      comment: `apps/web is a separate package; apps/cli's code (including its config
+helpers) is not importable from it. The few pure functions the web needs are
+duplicated in apps/web/lib/server/config.ts with a cross-reference comment.`,
+      from: { path: "^apps/web/" },
+      to: { path: "^apps/cli/src/" },
     },
     {
       name: "src-imports-no-tests",
       severity: "error",
-      comment: `Production code reaching into tests/. The fakes live outside src/ precisely
-so this cannot happen — if you need this shape in production, it is not a
-fake, it is a missing abstraction.`,
-      from: { path: "^src/" },
+      comment: `Production code reaching into tests/. The fakes live outside packages/ and
+apps/ precisely so this cannot happen — if you need this shape in production,
+it is not a fake, it is a missing abstraction.`,
+      from: { path: "^(packages|apps/cli/src)/" },
       to: { path: "^tests/" },
     },
     {
       name: "no-dev-dependencies-in-src",
       severity: "error",
-      comment: `A devDependency imported from src/ ships broken: it is absent from the
-published package. Move it to dependencies, or move the code that needs it
-out of src/.`,
-      from: { path: "^src/" },
+      comment: `A devDependency imported from production code ships broken: it is absent from
+the published package. Move it to dependencies, or move the code that needs it
+out of packages/ and apps/cli/src/.`,
+      from: { path: "^(packages|apps/cli/src)/" },
       to: { dependencyTypes: ["npm-dev"] },
     },
     {
       name: "no-undeclared-folders",
       severity: "error",
-      comment: `A module under src/ outside the folders the ADR lists. No services/, no
-utils/, no ports/ or adapters/ — the pattern lives in the direction of
-dependencies, not in a folder name. Amend the ADR before adding a folder.`,
+      comment: `A module under packages/ or apps/ outside the folders the ADR lists.
+No services/, no utils/, no ports/ or adapters/ — the pattern lives in the
+direction of dependencies, not in a folder name. Amend the ADR before adding
+a folder.`,
       from: {},
       to: {
-        path: "^src/",
-        pathNot: "^src/(bin|cli|core|mcp|pluggy|storage)/|^src/(config|logging)\\.ts$",
+        path: "^(packages|apps/cli/src|apps/web)/",
+        pathNot: "^packages/(core|pluggy|storage)/src/|^apps/cli/src/(bin|cli|mcp)/|^apps/cli/src/(config|logging)\\.ts$|^apps/web/(app|lib|components)/",
       },
     },
     {
@@ -89,7 +119,7 @@ warning disappears the moment something imports it.`,
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: {
-      extensions: [".ts", ".js", ".mjs", ".json"],
+      extensions: [".ts", ".tsx", ".js", ".mjs", ".json"],
       conditionNames: ["import", "node", "default"],
     },
   },

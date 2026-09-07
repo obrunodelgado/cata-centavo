@@ -3,13 +3,13 @@ import { describe, it } from "node:test";
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import type { ClosingDayStore } from "../../../src/core/contracts.ts";
-import type { ToolDeps } from "../../../src/mcp/tools/result.ts";
+import type { ClosingDayStore } from "@cata-centavo/core";
+import type { ToolDeps } from "../../../apps/cli/src/mcp/tools/result.ts";
 import {
   handleDeleteClosingDay,
   handleListClosingDays,
   handleSetClosingDay,
-} from "../../../src/mcp/tools/closing-days.ts";
+} from "../../../apps/cli/src/mcp/tools/closing-days.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 import { fakeSource } from "../../fakes/fake-source.ts";
 

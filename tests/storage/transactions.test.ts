@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { Logger, TransactionFilter } from "../../src/core/contracts.ts";
+import type { Logger, TransactionFilter } from "@cata-centavo/core";
 
-import { openDatabase } from "../../src/storage/db.ts";
-import { CACHE_MIGRATIONS } from "../../src/storage/migrations.ts";
-import { createTransactionStore } from "../../src/storage/transactions.ts";
+import { openDatabase } from "@cata-centavo/storage";
+import { CACHE_MIGRATIONS } from "@cata-centavo/storage";
+import { createTransactionStore } from "@cata-centavo/storage";
 import { fakeLogger } from "../fakes/fake-logger.ts";
 import { tx } from "../fakes/transaction-builder.ts";
 

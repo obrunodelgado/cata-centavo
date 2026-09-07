@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createTransport, slidingWindowLimiter } from "../../src/pluggy/transport.ts";
+import { createTransport, slidingWindowLimiter } from "@cata-centavo/pluggy";
 import { fakeFetch, json } from "../fakes/fake-fetch.ts";
 import { fixedClock } from "../fakes/fixed-clock.ts";
 import { fakeLogger } from "../fakes/fake-logger.ts";

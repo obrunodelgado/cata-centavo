@@ -20,10 +20,10 @@ const SENSORS = {
 };
 
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**"] },
+  { ignores: ["dist/**", "node_modules/**", ".next/**", ".nx/**"] },
 
   {
-    files: ["**/*.ts"],
+    files: ["**/*.{ts,tsx}"],
     extends: [...tseslint.configs.recommended],
     plugins: { local: localRules },
     languageOptions: {
@@ -64,7 +64,7 @@ export default tseslint.config(
   },
 
   {
-    files: ["tests/**/*.ts"],
+    files: ["tests/**/*.ts", "e2e/**/*.ts"],
     rules: {
       "max-lines-per-function": "off",
       complexity: "off",

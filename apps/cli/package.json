@@ -1,0 +1,68 @@
+{
+  "name": "cata-centavo",
+  "version": "0.3.1",
+  "type": "module",
+  "description": "MCP server for Brazilian Open Finance data, via Pluggy",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "open-finance",
+    "pluggy",
+    "finance"
+  ],
+  "license": "MIT",
+  "author": "Marcus Xavier",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarcusXavierr/cata-centavo.git"
+  },
+  "homepage": "https://github.com/MarcusXavierr/cata-centavo#readme",
+  "bugs": {
+    "url": "https://github.com/MarcusXavierr/cata-centavo/issues"
+  },
+  "bin": {
+    "cata-centavo": "./dist/bin/cata-centavo.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "node src/bin/cata-centavo.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --format ../tools/eslint-formatter-agent.js",
+    "lint:fix": "eslint src --fix --format ../tools/eslint-formatter-agent.js",
+    "lint:sensor": "eslint src --format ../tools/eslint-formatter-sensor.js",
+    "deps": "depcruise src --output-type plugin:$PWD/../tools/depcruise-reporter-agent.js",
+    "build": "tsc -b tsconfig.build.json",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm run deps"
+  },
+  "dependencies": {
+    "@cata-centavo/core": "0.3.1",
+    "@cata-centavo/pluggy": "0.3.1",
+    "@cata-centavo/storage": "0.3.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "pino": "^10.3.1",
+    "pino-roll": "^4.0.0",
+    "pluggy-sdk": "^0.90.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/tap-runner": "^9.6.1",
+    "@types/node": "^24.13.3",
+    "dependency-cruiser": "^18.1.0",
+    "eslint": "^10.8.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.65.0"
+  }
+}

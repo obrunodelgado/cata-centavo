@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { ToolDeps } from "../../../src/mcp/tools/result.ts";
-import { handleGetInvestments } from "../../../src/mcp/tools/investments.ts";
+import type { ToolDeps } from "../../../apps/cli/src/mcp/tools/result.ts";
+import { handleGetInvestments } from "../../../apps/cli/src/mcp/tools/investments.ts";
 import { connection, investmentPosition } from "../../fakes/fake-bank.ts";
 import { fakeLogger } from "../../fakes/fake-logger.ts";
 import { fakeSource, type FakeSourceOptions } from "../../fakes/fake-source.ts";

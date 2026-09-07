@@ -8,8 +8,8 @@ import {
   type ConnectionOutcome,
   type InitDeps,
   type InitReport,
-} from "../../src/cli/init.ts";
-import { HttpError } from "../../src/pluggy/errors.ts";
+} from "../../apps/cli/src/cli/init.ts";
+import { HttpError } from "@cata-centavo/pluggy";
 import { connection, fakeBank, type FakeBankOptions } from "../fakes/fake-bank.ts";
 import { fixedClock } from "../fakes/fixed-clock.ts";
 

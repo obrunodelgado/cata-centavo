@@ -16,7 +16,8 @@ describe("coverage sensor configuration", () => {
 
     assert.match(packageJson.scripts?.precoverage ?? "", /mkdirSync\('coverage'/);
     assert.match(coverage, /--experimental-test-coverage/);
-    assert.match(coverage, /--test-coverage-include="src\/\*\*\/\*\.ts"/);
+    assert.match(coverage, /--test-coverage-include="packages\/\*\/src\/\*\*\/\*\.ts"/);
+    assert.match(coverage, /--test-coverage-include="apps\/cli\/src\/\*\*\/\*\.ts"/);
     assert.match(coverage, /--test-reporter=spec/);
     assert.match(coverage, /--test-reporter-destination=stdout/);
     assert.match(coverage, /--test-reporter=lcov/);
