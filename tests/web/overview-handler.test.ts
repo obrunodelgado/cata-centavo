@@ -253,6 +253,31 @@ describe("handleOverview — series, anchor and balances", () => {
     );
   });
 
+  it("internal transfers never reach the donut, the totals or the savings rate", async () => {
+    const fx = fixture({
+      accounts: [bankAccount({ id: ACC_CASH, amountCents: 1_843_210 })],
+      rows: [
+        row({ id: "t1", localDate: "2026-08-10", amountCents: -50_000, description: "Aplicação", categoryId: "03000000" }),
+        row({ id: "t2", localDate: "2026-08-11", amountCents: 30_000, description: "Resgate", categoryId: "03000000" }),
+        row({ id: "t3", localDate: "2026-08-12", amountCents: 10_000, description: "Rendimento", categoryId: "03060000" }),
+        row({ id: "t4", localDate: "2026-08-13", amountCents: -5_000, description: "PIX entre contas", categoryId: "04000000" }),
+        row({ id: "t5", localDate: "2026-08-14", amountCents: -1_000, description: "Mercado", categoryId: "10000000" }),
+      ],
+    });
+    const body = await payload(fx.source, { range: "1M" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+
+    assert.equal(body.anchor.received, 10_000, "the redemption is excluded, the dividend is not");
+    assert.equal(body.anchor.spent, 1_000, "the application and the own-account transfer are excluded");
+    assert.equal(body.anchor.savingsRate, 90.0);
+    assert.deepEqual(
+      body.anchor.categories.map((category) => [category.categoryId, category.spentCents]),
+      [["10000000", 1_000]],
+      "the donut never shows internal transfers",
+    );
+  });
+
   it("categories resolve through the core aggregate with pt-BR names", async () => {
     const fx = fixture({ accounts, rows, investments });
     const body = await payload(fx.source, { range: "1M" });

@@ -28,11 +28,71 @@ describe("aggregate", () => {
     assert.equal(aggregate([derived({ categoryId: "04000000", amountCents: -50_000 })], TODAY).spentCents, 0);
   });
 
-  it("still lists an excluded transfer as a group", () => {
+  it("does not list an excluded transfer as a group", () => {
     const result = aggregate([derived({ categoryId: "05100000", amountCents: -10_000 })], TODAY);
 
-    assert.deepEqual(result.groups.map((group) => group.categoryId), ["05000000"]);
+    assert.deepEqual(result.groups, []);
+    assert.equal(result.spentCents, 0);
   });
+
+  it("does not count applying to your own investments as spending", () => {
+    const result = aggregate([derived({ categoryId: "03000000", amountCents: -50_000 })], TODAY);
+
+    assert.equal(result.spentCents, 0);
+    assert.deepEqual(result.groups, []);
+  });
+
+  it("does not count redeeming your own investment as income", () => {
+    const result = aggregate([derived({ categoryId: "03000000", amountCents: 50_000 })], TODAY);
+
+    assert.equal(result.receivedCents, 0);
+    assert.deepEqual(result.groups, []);
+  });
+
+  it("counts dividend earnings as income", () => {
+    const result = aggregate([derived({ categoryId: "03060000", amountCents: 10_000 })], TODAY);
+
+    assert.equal(result.receivedCents, 10_000);
+    assert.deepEqual(result.groups.map((group) => group.categoryId), ["03000000"]);
+    assert.equal(result.groups[0]?.totalCents, 10_000);
+  });
+
+  it("excludes a row manually overridden to Investments", () => {
+    const result = aggregate([
+      derived({ categoryId: "11000000", category: "03000000", categorySrc: "override", amountCents: -5_000 }),
+    ], TODAY);
+
+    assert.equal(result.spentCents, 0);
+    assert.deepEqual(result.groups, []);
+  });
+
+  it("an explicit override to Investments wins over the dividend leaf", () => {
+    const result = aggregate([
+      derived({ categoryId: "03060000", category: "03000000", categorySrc: "override", amountCents: -5_000 }),
+    ], TODAY);
+
+    assert.equal(result.spentCents, 0);
+    assert.deepEqual(result.groups, []);
+  });
+
+  const INVESTMENT_LEAVES: readonly { readonly categoryId: string; readonly internal: boolean }[] = [
+    { categoryId: "03000000", internal: true },
+    { categoryId: "03010000", internal: true },
+    { categoryId: "03020000", internal: true },
+    { categoryId: "03030000", internal: true },
+    { categoryId: "03040000", internal: true },
+    { categoryId: "03050000", internal: true },
+    { categoryId: "03060000", internal: false },
+    { categoryId: "03070000", internal: true },
+  ];
+
+  for (const { categoryId, internal } of INVESTMENT_LEAVES) {
+    it(`${internal ? "excludes" : "keeps"} investment leaf ${categoryId}`, () => {
+      const result = aggregate([derived({ categoryId, amountCents: -50_000 })], TODAY);
+
+      assert.equal(result.spentCents, internal ? 0 : 50_000);
+    });
+  }
 
   it("counts a payment to another person as spending", () => {
     assert.equal(aggregate([derived({ categoryId: "05020000", amountCents: -30_000 })], TODAY).spentCents, 30_000);
@@ -60,6 +120,16 @@ describe("aggregate", () => {
       assert.equal(result.upcoming.totalCents, upcomingCents);
     });
   }
+
+  it("excludes a future internal transfer from upcoming", () => {
+    const result = aggregate([
+      derived({ localDate: "2026-07-01", categoryId: "04000000", amountCents: -20_000 }),
+    ], TODAY);
+
+    assert.equal(result.upcoming.count, 0);
+    assert.equal(result.upcoming.totalCents, 0);
+    assert.equal(result.spentCents, 0);
+  });
 
   it("keeps the upcoming total signed, and sums it across rows", () => {
     const result = aggregate([
