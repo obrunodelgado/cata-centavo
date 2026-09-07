@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { DatabaseSync } from "node:sqlite";
 
 import type { Logger, TransactionFilter } from "@cata-centavo/core";
 
@@ -7,7 +8,7 @@ import { openDatabase } from "@cata-centavo/storage";
 import { CACHE_MIGRATIONS } from "@cata-centavo/storage";
 import { createTransactionStore } from "@cata-centavo/storage";
 import { fakeLogger } from "../fakes/fake-logger.ts";
-import { tx } from "../fakes/transaction-builder.ts";
+import { derived, tx } from "../fakes/transaction-builder.ts";
 
 /** Seven rows chosen so each filter selects a disjoint, named subset. */
 const SEED = [
@@ -45,6 +46,13 @@ function filterFor(accountIds: readonly string[]): TransactionFilter {
 
 function idsOf(rows: readonly { readonly id: string }[]): readonly string[] {
   return rows.map((row) => row.id);
+}
+
+/** Notes are seeded by hand because these tests exercise the read side; the note store owns the write path. */
+function insertNote(db: DatabaseSync, transactionId: string, note: string, noteNorm: string): void {
+  db.prepare(
+    "INSERT INTO userdata.transaction_notes (transaction_id, note, note_norm, created_at, updated_at) VALUES (?, ?, ?, '2026-01-01', '2026-01-01')",
+  ).run(transactionId, note, noteNorm);
 }
 
 describe("replaceAccount", () => {
@@ -114,6 +122,7 @@ describe("replaceAccount", () => {
       ...row,
       category: "01000000",
       categorySrc: "pluggy",
+      note: null,
     });
   });
 
@@ -250,6 +259,60 @@ describe("search (q)", () => {
 
     assert.equal(new Set([...idsOf(first), ...idsOf(second)]).size, 3);
   });
+});
+
+describe("note on reads", () => {
+  function notedStore() {
+    const { store, db } = storeAndDbFor();
+    store.replaceAccount("acc-1", "conn-1", [tx({ id: "tx-1" }), tx({ id: "tx-2" })], null);
+    insertNote(db, "tx-1", "Reajuste IGP-M aplicado em março", "REAJUSTE IGP-M APLICADO EM MARCO");
+    return store;
+  }
+
+  it("carries the note on query rows and leaves unannotated rows null", () => {
+    const rows = notedStore().query(filterFor(["acc-1"]));
+
+    assert.deepEqual(rows.find((row) => row.id === "tx-1"), derived({ id: "tx-1", note: "Reajuste IGP-M aplicado em março" }));
+    assert.equal(rows.find((row) => row.id === "tx-2")?.note, null);
+  });
+
+  it("carries the note on byIds rows", () => {
+    const rows = notedStore().byIds(["tx-1", "tx-2"]);
+
+    assert.deepEqual(rows.find((row) => row.id === "tx-1"), derived({ id: "tx-1", note: "Reajuste IGP-M aplicado em março" }));
+    assert.equal(rows.find((row) => row.id === "tx-2")?.note, null);
+  });
+});
+
+describe("search (q) over notes", () => {
+  function notedSearchStore() {
+    const { store, db } = storeAndDbFor();
+    store.replaceAccount("acc-bank", "conn-1", [
+      tx({ id: "reajuste", accountId: "acc-bank", description: "Tarifa bancária", descriptionNorm: "TARIFA BANCARIA" }),
+      tx({ id: "reuniao", accountId: "acc-bank", description: "Transferência recebida", descriptionNorm: "TRANSFERENCIA RECEBIDA" }),
+      tx({ id: "pct", accountId: "acc-bank", description: "Compra aprovada", descriptionNorm: "COMPRA APROVADA" }),
+      tx({ id: "digits", accountId: "acc-bank", description: "500 OK", descriptionNorm: "500 OK" }),
+    ], null);
+    insertNote(db, "reajuste", "Reajuste IGP-M aplicado em março", "REAJUSTE IGP-M APLICADO EM MARCO");
+    insertNote(db, "reuniao", "Reunião com o contador", "REUNIAO COM O CONTADOR");
+    insertNote(db, "pct", "50% de desconto", "50% DE DESCONTO");
+    return store;
+  }
+
+  const NOTE_SEARCH_CASES: readonly { readonly name: string; readonly q: string; readonly ids: readonly string[] }[] = [
+    { name: "matches the note case-insensitively", q: "reajuste", ids: ["reajuste"] },
+    { name: "matches the note accent-insensitively through note_norm", q: "reuniao", ids: ["reuniao"] },
+    { name: "matches an accented query against the normalized note", q: "reunião", ids: ["reuniao"] },
+    { name: "escapes % so it matches the note literally", q: "50%", ids: ["pct"] },
+    { name: "escapes _ so a wildcard reading of the note finds nothing", q: "50_", ids: [] },
+    { name: "finds nothing for a term no field holds", q: "netflix", ids: [] },
+  ];
+
+  for (const { name, q, ids } of NOTE_SEARCH_CASES) {
+    it(name, () => {
+      assert.deepEqual(idsOf(notedSearchStore().query({ ...WIDE_FILTER, q })), ids);
+    });
+  }
 });
 
 describe("byIds", () => {

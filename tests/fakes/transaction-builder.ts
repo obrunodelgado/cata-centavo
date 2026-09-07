@@ -47,5 +47,5 @@ export function derived(overrides: Partial<DerivedTransaction> = {}): DerivedTra
   if (category !== null) {
     categorySrc = "pluggy";
   }
-  return { ...row, category, categorySrc, ...overrides };
+  return { ...row, category, categorySrc, note: null, ...overrides };
 }

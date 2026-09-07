@@ -82,6 +82,20 @@ describe("getTransactionDetails", () => {
     assert.equal(detail.categoryId, "11010000");
   });
 
+  it("carries the user's note on the detail", async () => {
+    const rows = [derived({ id: "t-1", note: "presente da Marina" })];
+    const result = await handleGetTransactionDetails(depsWith(rows), { ids: ["t-1"] });
+    const [detail] = JSON.parse(textOf(result)).transactions;
+
+    assert.equal(detail.note, "presente da Marina");
+  });
+
+  it("omits the note entirely when there is none", async () => {
+    const result = await handleGetTransactionDetails(depsWith(seededRows()), { ids: ["t-bank-1"] });
+
+    assert.equal(JSON.parse(textOf(result)).transactions[0].note, undefined);
+  });
+
   it("returns money as a decimal string", async () => {
     const result = await handleGetTransactionDetails(depsWith(seededRows()), { ids: ["t-card-1"] });
 

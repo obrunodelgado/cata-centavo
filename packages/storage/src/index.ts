@@ -4,5 +4,6 @@ export * from "./db.ts";
 export * from "./diagnostics.ts";
 export * from "./harvest.ts";
 export * from "./migrations.ts";
+export * from "./transaction-notes.ts";
 export * from "./transaction-row.ts";
 export * from "./transactions.ts";

@@ -28,6 +28,10 @@ _Avoid_: Pendente (the prototype's status for unpaid boletos — the cache never
 How a movement happened, as the bank reported it — PIX, Boleto, TED, Débito — plus **Cartão** for any movement on a credit account and "—" when nothing is known. What the prototype's "Tipo" column shows; not to be confused with the receita/despesa filter.
 _Avoid_: tipo, tipo de transação
 
+**Nota**:
+An optional free-text annotation the user writes on a transaction. User-authored, never derived; empty means no nota, and it changes no number in the system.
+_Avoid_: comentário, observação, descrição (that is the bank-reported description)
+
 **Documento do titular**:
 The holder's own CPF or CNPJ, used to recognise an internal transfer when the counterparty is the holder themself.
 _Avoid_: documento pessoal

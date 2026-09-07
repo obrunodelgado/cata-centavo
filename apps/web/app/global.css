@@ -271,6 +271,10 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
 .tx-desc { font-weight: 550; font-size: 13px; }
 .tx-cat { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 .tx-cat i { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+.tx-note { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 4px; background: var(--fg-soft); color: var(--muted); flex: none; cursor: help; outline: none; }
+.tx-note svg { width: 10px; height: 10px; }
+.tx-note:hover, .tx-note:focus-visible { background: color-mix(in oklch, var(--fg) 13%, transparent); color: var(--fg); }
+.tx-note:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--muted); }
 .tx-type { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
 .tx-rec { color: var(--pos); background: var(--pos-soft); }
 .tx-pix { color: oklch(50% 0.16 255); background: color-mix(in oklch, var(--c1) 12%, transparent); }

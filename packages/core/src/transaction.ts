@@ -55,5 +55,11 @@ export type Transaction = {
   readonly purchaseDate: string | null;
 };
 
-/** A cached transaction plus the category the derivation resolved for it. */
-export type DerivedTransaction = Transaction & ResolvedCategory;
+/**
+ * A cached transaction plus the category the derivation resolved for it, and
+ * the user's own annotation. The note is user-authored data: it lives in
+ * `data.db`, survives cache rebuilds, and absence is `null`, never `''`.
+ */
+export type DerivedTransaction = Transaction & ResolvedCategory & {
+  readonly note: string | null;
+};

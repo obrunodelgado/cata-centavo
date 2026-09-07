@@ -14,6 +14,7 @@ import { DonutChart } from "../charts/donut-chart.tsx";
 import { FlowChart, type FlowDatum } from "../charts/flow-chart.tsx";
 import { Sparkline } from "../charts/sparkline.tsx";
 import { Button } from "../ui/button.tsx";
+import { NoteChip } from "../ui/note-chip.tsx";
 import { Modal } from "../ui/modal.tsx";
 import { Pill } from "../ui/pill.tsx";
 import { DataTable, type TableColumn } from "../ui/table.tsx";
@@ -415,6 +416,7 @@ const RECENT_COLUMNS: readonly TableColumn<RecentRow>[] = [
               interna
             </span>
           ) : null}
+          {row.note !== null ? <NoteChip note={row.note} /> : null}
         </div>
       </div>
     ),

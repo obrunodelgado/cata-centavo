@@ -1,9 +1,9 @@
 import { homedir } from "node:os";
 
-import type { Bank, BankFailure, CategoryWriter, Clock, ClosingDayStore, TransactionReader } from "@cata-centavo/core";
+import type { Bank, BankFailure, CategoryWriter, Clock, ClosingDayStore, TransactionNoteStore, TransactionReader } from "@cata-centavo/core";
 import { createTransactionReader } from "@cata-centavo/core";
 import { createPluggyClient, toFailure } from "@cata-centavo/pluggy";
-import { createCategoryWriter, createClosingDayStore, createTransactionStore, openDatabases } from "@cata-centavo/storage";
+import { createCategoryWriter, createClosingDayStore, createTransactionNoteStore, createTransactionStore, openDatabases } from "@cata-centavo/storage";
 
 import { loadConfig, resolvePaths, type Env } from "./config.ts";
 import { createLogger } from "./logging.ts";
@@ -26,6 +26,7 @@ export type WebSource =
       readonly toFailure: (error: unknown) => BankFailure;
       readonly reader: TransactionReader;
       readonly writer: CategoryWriter;
+      readonly noteWriter: TransactionNoteStore;
       readonly closingDays: ClosingDayStore;
       /** "Today" for window semantics and freshness rules; injectable for tests. */
       readonly clock: Clock;
@@ -79,6 +80,7 @@ export function createSource(env: Env): WebSource {
       clock: systemClock,
     });
     const writer = createCategoryWriter(databases.db, systemClock);
+    const noteWriter = createTransactionNoteStore(databases.db, systemClock);
     const closingDays = createClosingDayStore(databases.db, systemClock);
 
     return {
@@ -88,6 +90,7 @@ export function createSource(env: Env): WebSource {
       toFailure,
       reader,
       writer,
+      noteWriter,
       closingDays,
       clock: systemClock,
       close: () => databases.close(),

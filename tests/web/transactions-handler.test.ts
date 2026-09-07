@@ -4,25 +4,29 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Account, Transaction } from "@cata-centavo/core";
+import type { Account, DerivedTransaction, Transaction, TransactionNoteStore, TransactionReader } from "@cata-centavo/core";
 import { createTransactionReader } from "@cata-centavo/core";
 import { toFailure } from "@cata-centavo/pluggy";
 import { createCategoryWriter, createTransactionStore, openDatabases } from "@cata-centavo/storage";
 
-import type { CategoryWriteResponse, TransactionsResponse } from "../../apps/web/lib/contracts.ts";
+import type { CategoryWriteResponse, NoteWriteResponse, TransactionsResponse } from "../../apps/web/lib/contracts.ts";
 import { handleTransactions } from "../../apps/web/lib/handlers/transactions.ts";
 import { handleTransactionCategory } from "../../apps/web/lib/handlers/transaction-category.ts";
+import { handleTransactionNote } from "../../apps/web/lib/handlers/transaction-note.ts";
 import type { WebSource } from "../../apps/web/lib/server/composition.ts";
 import { connection, fakeBank } from "../fakes/fake-bank.ts";
 import { fixedClock } from "../fakes/fixed-clock.ts";
 import { fakeLogger } from "../fakes/fake-logger.ts";
-import { tx } from "../fakes/transaction-builder.ts";
+import { derived, tx } from "../fakes/transaction-builder.ts";
 
 /**
  * Unit: the transactions handler against a fake bank and the real storage —
  * the two-file SQLite pair on temp dirs, so the category write below exercises
  * the real `CategoryWriter` and the next list call resolves through the
- * override. Every declared query parameter provably changes the result set.
+ * override. The note write is faked instead: the note store is another
+ * surface's in-progress work, and the handler's contract is only that the
+ * request reaches the store untouched and its verdict comes back as content.
+ * Every declared query parameter provably changes the result set.
  */
 
 const CONN_1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -53,7 +57,9 @@ function row(overrides: Partial<Transaction>): Transaction {
   return tx({ accountId: ACC_CASH, connectionId: CONN_1, ...overrides });
 }
 
-type Fixture = { readonly source: WebSource; close(): void };
+type NoteWrite = { readonly transactionId: string; readonly note: string | null };
+
+type Fixture = { readonly source: Extract<WebSource, { readonly ok: true }>; readonly noteWrites: NoteWrite[]; close(): void };
 
 const open: Fixture[] = [];
 
@@ -76,6 +82,13 @@ function fixture(options: { readonly accounts: readonly Account[]; readonly rows
   });
   const reader = createTransactionReader({ bank, store, toFailure, log, clock: CLOCK });
   const writer = createCategoryWriter(databases.db, CLOCK);
+  const noteWrites: NoteWrite[] = [];
+  const noteWriter: TransactionNoteStore = {
+    set: (transactionId, note) => {
+      noteWrites.push({ transactionId, note });
+      return { transactionId, note, known: true };
+    },
+  };
 
   const handle: Fixture = {
     source: {
@@ -85,10 +98,12 @@ function fixture(options: { readonly accounts: readonly Account[]; readonly rows
       toFailure,
       reader,
       writer,
+      noteWriter,
       closingDays: { list: () => [], set: () => {}, delete: () => 0 },
       clock: CLOCK,
       close: () => databases.close(),
     },
+    noteWrites,
     close: () => {
       databases.close();
       rmSync(dir, { recursive: true, force: true });
@@ -431,3 +446,102 @@ describe("handleTransactionCategory — the write boundary", () => {
     assert.equal(mercado?.categorySrc, "override", "the modal's 'corrigida por você' comes from here");
   });
 });
+
+describe("handleTransactionNote — the note write boundary", () => {
+  function noteRequest(body: unknown): Request {
+    return new Request("http://local/api/transactions/note", {
+      method: "POST",
+      body: typeof body === "string" ? body : JSON.stringify(body),
+    });
+  }
+
+  it("hands the transactionId and note to the store raw and returns its verdict", async () => {
+    const fx = seededFixture();
+    const response = await handleTransactionNote(fx.source, noteRequest({ transactionId: "mercado", note: "  presente da Marina  " }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(fx.noteWrites, [{ transactionId: "mercado", note: "  presente da Marina  " }], "the boundary passes the value through; the store owns the trim");
+    const body = (await response.json()) as NoteWriteResponse;
+    assert.deepEqual(body, { transactionId: "mercado", note: "  presente da Marina  ", known: true });
+  });
+
+  it("forwards an empty note so the store clears it", async () => {
+    const fx = seededFixture();
+    const response = await handleTransactionNote(fx.source, noteRequest({ transactionId: "mercado", note: "   " }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(fx.noteWrites, [{ transactionId: "mercado", note: "   " }], "the boundary does not pre-trim or reject absence");
+  });
+
+  it("passes a known:false verdict through as readable content with a 200", async () => {
+    const fx = seededFixture();
+    const source: WebSource = { ...fx.source, noteWriter: { set: (transactionId, note) => ({ transactionId, note, known: false }) } };
+    const response = await handleTransactionNote(source, noteRequest({ transactionId: "ghost", note: "sumiu" }));
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as NoteWriteResponse;
+    assert.deepEqual(body, { transactionId: "ghost", note: "sumiu", known: false });
+  });
+
+  it("rejects an invalid body with readable problems, never reaching the store", async () => {
+    const fx = seededFixture();
+    const bodies: unknown[] = [
+      { note: "sem transactionId" },
+      { transactionId: "", note: "id vazio" },
+      { transactionId: "mercado" },
+      { transactionId: "mercado", note: "x".repeat(501) },
+      "not json",
+    ];
+    for (const body of bodies) {
+      const response = await handleTransactionNote(fx.source, noteRequest(body));
+      assert.equal(response.status, 400, `body=${JSON.stringify(body)}`);
+      const parsed = (await response.json()) as { ok: boolean; problems?: readonly string[] };
+      assert.equal(parsed.ok, false);
+      assert.ok((parsed.problems ?? []).length > 0, "the problems array is readable content");
+    }
+    assert.deepEqual(fx.noteWrites, [], "an invalid body never reaches the store");
+  });
+
+  it("reports configuration problems instead of crashing", async () => {
+    const broken: WebSource = { ok: false, problems: ["PLUGGY_CLIENT_ID is missing."] };
+    const response = await handleTransactionNote(broken, noteRequest({ transactionId: "mercado", note: "x" }));
+    const body = (await response.json()) as { ok: boolean; problems?: readonly string[] };
+    assert.equal(body.ok, false);
+    assert.deepEqual(body.problems, ["PLUGGY_CLIENT_ID is missing."]);
+  });
+});
+
+describe("handleTransactions — the note on the wire", () => {
+  it("carries the row's note into the list payload, absence as null", async () => {
+    const rows: readonly DerivedTransaction[] = [
+      derived({ id: "anotada", localDate: "2026-08-15", amountCents: -1_000, description: "Presente", note: "presente da Marina" }),
+      derived({ id: "limpa", localDate: "2026-08-16", amountCents: -2_000, description: "Sem nota", note: null }),
+    ];
+    const source: WebSource = {
+      ok: true,
+      connections: [],
+      bank: fakeBank({ connections: [], accounts: {}, investments: {} }),
+      toFailure,
+      reader: readerReading(rows),
+      writer: { setCategory: () => ({ updated: 0, unknownIds: [] }), setCounterpartyCategory: () => ({ affected: 0 }) },
+      noteWriter: { set: () => ({ transactionId: "", note: null, known: false }) },
+      closingDays: { list: () => [], set: () => {}, delete: () => 0 },
+      clock: CLOCK,
+      close: () => {},
+    };
+
+    const body = await payload(source, { from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+    assert.equal(body.rows.find((row) => row.id === "anotada")?.note, "presente da Marina");
+    assert.equal(body.rows.find((row) => row.id === "limpa")?.note, null);
+  });
+});
+
+/** A reader that answers `query` from a fixed derived set — no storage underneath. */
+function readerReading(rows: readonly DerivedTransaction[]): TransactionReader {
+  return {
+    load: async () => ({ accounts: [], unavailable: [] }),
+    query: () => rows,
+    byIds: () => [],
+    cardRows: () => [],
+    dataThrough: () => new Map(),
+  };
+}

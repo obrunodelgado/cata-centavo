@@ -129,4 +129,16 @@ export const DATA_MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    to: 3,
+    up: `
+      CREATE TABLE transaction_notes (
+        transaction_id TEXT PRIMARY KEY,
+        note TEXT NOT NULL,
+        note_norm TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

@@ -1,4 +1,4 @@
-import type { AccountsResponse, CategoriesResponse, CategoryWriteResponse, OverviewResponse, SourcesResponse, SyncResponse, TransactionsResponse, TransactionTypeFilter } from "./contracts.ts";
+import type { AccountsResponse, CategoriesResponse, CategoryWriteResponse, NoteWriteResponse, OverviewResponse, SourcesResponse, SyncResponse, TransactionsResponse, TransactionTypeFilter } from "./contracts.ts";
 import type { Range } from "./series.ts";
 
 /**
@@ -135,4 +135,8 @@ export function fetchCategories(): Promise<CategoriesResponse> {
 
 export function postTransactionCategory(body: { readonly ids: readonly string[]; readonly categoryId: string }): Promise<CategoryWriteResponse> {
   return postJson<CategoryWriteResponse>("/api/transactions/category", { ids: [...body.ids], categoryId: body.categoryId });
+}
+
+export function postTransactionNote(transactionId: string, note: string): Promise<NoteWriteResponse> {
+  return postJson<NoteWriteResponse>("/api/transactions/note", { transactionId, note });
 }

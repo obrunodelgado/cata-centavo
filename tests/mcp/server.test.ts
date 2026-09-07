@@ -34,6 +34,7 @@ describe("MCP server", () => {
       "getInvestments",
       "setCategory",
       "setCounterpartyCategory",
+      "setTransactionNote",
       "listClosingDays",
       "setClosingDay",
       "deleteClosingDay",

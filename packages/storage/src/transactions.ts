@@ -6,7 +6,9 @@ import type { CategoryFilterValue, Clock, Logger, TransactionFilter, Transaction
 import type { DerivedTransaction, Transaction } from "@cata-centavo/core";
 import { DERIVED_CATEGORY, DERIVED_COLUMNS } from "./category-sql.ts";
 import { harvest } from "./harvest.ts";
+import { inTransaction } from "./in-transaction.ts";
 import { rowToDerived, transactionValues } from "./transaction-row.ts";
+import { normalizeFreeText } from "./text-norm.ts";
 
 const TRANSACTION_COLUMNS = [
   "id", "account_id", "connection_id", "account_type", "account_subtype",
@@ -90,20 +92,15 @@ type ReplaceAccountOptions = {
 };
 
 function replaceAccount(options: ReplaceAccountOptions): number {
-  options.db.exec("BEGIN");
-  try {
+  return inTransaction(options.db, () => {
     for (const row of options.rows) {
       options.insert.run(...transactionValues(row, options.log));
     }
     const deleteResult = options.deleteMissing.run(options.accountId, JSON.stringify(options.rows.map((row) => row.id)));
     options.stamp.run(options.accountId, options.connectionId, options.lastUpdatedAt);
     harvest({ db: options.db, rows: options.rows, log: options.log, clock: options.clock });
-    options.db.exec("COMMIT");
     return Number(deleteResult.changes);
-  } catch (error) {
-    options.db.exec("ROLLBACK");
-    throw error;
-  }
+  });
 }
 
 function queryTransactions(db: DatabaseSync, filter: TransactionFilter): readonly DerivedTransaction[] {
@@ -118,7 +115,7 @@ function queryTransactions(db: DatabaseSync, filter: TransactionFilter): readonl
 }
 
 /**
- * The cheap filters run inside the CTE so the six correlated subqueries of
+ * The cheap filters run inside the CTE so the correlated subqueries of
  * `DERIVED_COLUMNS` only touch rows that already survived them. The category
  * filter has to run outside, because it compares the derived value.
  */
@@ -175,39 +172,27 @@ function categoryCondition(categories: readonly CategoryFilterValue[]): { readon
 }
 
 /**
- * The search needle, matched three ways: raw description (ASCII-case folded —
+ * The search needle, matched four ways: raw description (ASCII-case folded —
  * digits, acquirer prefixes and instalment markers live only there),
- * `description_norm` (the accent-insensitive half, normalized at insert), and
- * the counterparty (ASCII-case only; it has no normalized column). The
- * wildcards are escaped so a `%` or `_` in the search text is a literal.
+ * `description_norm` (the accent-insensitive half, normalized at insert), the
+ * counterparty (ASCII-case only; it has no normalized column), and the user's
+ * note through `note_norm` — the note store already wrote it folded and
+ * uppercased, so the same escaped needle matches. The wildcards are escaped so
+ * a `%` or `_` in the search text is a literal.
  */
 function addSearchFilter(conditions: string[], parameters: Array<string | number>, q: string | undefined): void {
   if (q === undefined) {
     return;
   }
-  const needle = normalizeQuery(q);
+  const needle = normalizeFreeText(q);
   if (needle === "") {
     return;
   }
   const pattern = `%${needle.replace(/[\\%_]/gu, "\\$&")}%`;
   conditions.push(
-    "(UPPER(t.description) LIKE ? ESCAPE '\\' OR t.description_norm LIKE ? ESCAPE '\\' OR UPPER(t.counterparty_name) LIKE ? ESCAPE '\\')",
+    "(UPPER(t.description) LIKE ? ESCAPE '\\' OR t.description_norm LIKE ? ESCAPE '\\' OR UPPER(t.counterparty_name) LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM userdata.transaction_notes n WHERE n.transaction_id = t.id AND n.note_norm LIKE ? ESCAPE '\\'))",
   );
-  parameters.push(pattern, pattern, pattern);
-}
-
-/**
- * The query-side half of the `description_norm` contract (`core/description.ts`):
- * the same NFD accent-strip and uppercase, none of the merchant stripping — a
- * search for "2/3" or "PAG*" must still find the raw text.
- */
-function normalizeQuery(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/gu, "")
-    .toUpperCase()
-    .replace(/\s+/gu, " ")
-    .trim();
+  parameters.push(pattern, pattern, pattern, pattern);
 }
 
 function addAmountFilters(

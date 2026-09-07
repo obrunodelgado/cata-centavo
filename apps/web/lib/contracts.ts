@@ -97,6 +97,8 @@ export type TransactionRow = {
   readonly categoryName: string | null;
   /** Where the category came from — the modal shows it when this is "override". */
   readonly categorySrc: string | null;
+  /** The user's own annotation, from data.db; absence is null, never ''. */
+  readonly note: string | null;
   readonly accountId: string;
   readonly accountName: string;
   /** The forma de pagamento label, fallbacks resolved server-side. */
@@ -144,6 +146,14 @@ export type CategoriesResponse = {
 export type CategoryWriteResponse = {
   readonly updated: number;
   readonly unknownIds: readonly string[];
+};
+
+export type NoteWriteResponse = {
+  readonly transactionId: string;
+  /** The stored note after the write; null when absent. */
+  readonly note: string | null;
+  /** Whether the id is still in the cache; a stale id is reported, never written. */
+  readonly known: boolean;
 };
 
 /* ─── /api/overview ─────────────────────────────────────────────── */
@@ -199,6 +209,8 @@ export type RecentRow = {
   readonly status: "Futuro" | "Pago";
   /** An internal transfer (ADR-0003): displayed with the "interna" tag, never a total. */
   readonly internal: boolean;
+  /** The user's own annotation; absence is `null`, never `''`. */
+  readonly note: string | null;
 };
 
 export type InvestmentTypeRow = {

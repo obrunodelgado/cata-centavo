@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import type { CategoryWriter, Clock, ClosingDayStore, Logger } from "@cata-centavo/core";
+import type { CategoryWriter, Clock, ClosingDayStore, Logger, TransactionNoteStore } from "@cata-centavo/core";
 
 import type { TransactionReader } from "@cata-centavo/core";
 import { prune } from "../format.ts";
@@ -11,6 +11,7 @@ export type ToolDeps = {
   readonly log: Logger;
   readonly reader: TransactionReader | null;
   readonly writer: CategoryWriter | null;
+  readonly noteWriter?: TransactionNoteStore | null;
   readonly closingDays?: ClosingDayStore | null;
   readonly clock: Clock;
 };

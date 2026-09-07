@@ -8,7 +8,7 @@ import { fakeBank, threeConnections } from "./fake-bank.ts";
 import type { FakeBank, FakeBankOptions } from "./fake-bank.ts";
 import { fakeLogger } from "./fake-logger.ts";
 
-import type { CategoryWriter } from "@cata-centavo/core";
+import type { CategoryWriter, TransactionNoteStore } from "@cata-centavo/core";
 
 export type FakeSourceOptions = Pick<
   FakeBankOptions,
@@ -21,6 +21,10 @@ export type FakeSource = Extract<Source, { readonly ok: true }> & {
 const dummyWriter: CategoryWriter = {
   setCategory: () => ({ updated: 0, unknownIds: [] }),
   setCounterpartyCategory: () => ({ affected: 0 }),
+};
+
+const dummyNoteWriter: TransactionNoteStore = {
+  set: (transactionId) => ({ transactionId, note: null, known: false }),
 };
 
 /** A ready MCP source backed by the standard three-connection bank fixture. */
@@ -85,5 +89,6 @@ export function fakeSource(options: FakeSourceOptions = {}): FakeSource {
     toFailure,
     reader,
     writer: dummyWriter,
+    noteWriter: dummyNoteWriter,
   };
 }

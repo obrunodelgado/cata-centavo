@@ -65,6 +65,7 @@ function row(overrides: Partial<Transaction>): Transaction {
 type Fixture = {
   readonly bank: FakeBank;
   readonly source: WebSource;
+  readonly db: ReturnType<typeof openDatabase>;
   close(): void;
 };
 
@@ -95,6 +96,7 @@ function fixture(options: {
 
   return {
     bank,
+    db,
     source: {
       ok: true,
       connections: [CONN_1, CONN_2],
@@ -105,6 +107,7 @@ function fixture(options: {
         setCategory: () => ({ updated: 0, unknownIds: [] }),
         setCounterpartyCategory: () => ({ affected: 0 }),
       },
+      noteWriter: { set: (transactionId, note) => ({ transactionId, note, known: false }) },
       closingDays: { list: () => [], set: () => {}, delete: () => 0 },
       clock: fixedClock(new Date(`${TODAY}T12:00:00.000Z`)),
       close,
@@ -354,6 +357,7 @@ describe("handleOverview — series, anchor and balances", () => {
         localDate: `2026-08-${String(30 - index).padStart(2, "0")}`,
         amountCents: -(index + 1) * 100,
         description: `Gasto ${index}`,
+
         categoryId: "17000000",
       }),
     );
@@ -372,6 +376,26 @@ describe("handleOverview — series, anchor and balances", () => {
       body.recent.every((row, index) => index === 0 || body.recent[index - 1]!.localDate >= row.localDate),
       "newest first",
     );
+  });
+
+  it("carries the note on recent rows, absence as null", async () => {
+    const fx = fixture({
+      accounts: [bankAccount({ id: ACC_CASH, amountCents: 1_843_210 })],
+      rows: [
+        row({ id: "t-nota", localDate: "2026-08-30", amountCents: -500, description: "Aluguel apto. 502" }),
+        row({ id: "t-sem-nota", localDate: "2026-08-29", amountCents: -200, description: "Outro gasto" }),
+      ],
+    });
+    fx.db
+      .prepare("INSERT INTO userdata.transaction_notes (transaction_id, note, note_norm, created_at, updated_at) VALUES ('t-nota', 'Reajuste IGP-M aplicado em março', 'REAJUSTE IGP-M APLICADO EM MARCO', '2026-08-30', '2026-08-30')")
+      .run();
+
+    const body = await payload(fx.source, { range: "1M" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+
+    assert.equal(body.recent.find((recent) => recent.id === "t-nota")?.note, "Reajuste IGP-M aplicado em março");
+    assert.equal(body.recent.find((recent) => recent.id === "t-sem-nota")?.note, null);
   });
 
   it("derives the tipo: the wire's paymentMethod, else the card account, else an em dash", async () => {

@@ -1,7 +1,7 @@
 import { afterEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 
-import { ApiError, fetchOverview, getJson, postJson, postSync } from "../../apps/web/lib/api.ts";
+import { ApiError, fetchOverview, getJson, postJson, postSync, postTransactionCategory, postTransactionNote } from "../../apps/web/lib/api.ts";
 
 type CapturedCall = { readonly url: string; readonly init: RequestInit };
 
@@ -24,11 +24,27 @@ describe("lib/api — the client fetch layer", () => {
 
     await getJson("/api/sources");
     await postSync();
+    await postTransactionCategory({ ids: ["tx-1"], categoryId: "moradia" });
+    await postTransactionNote("tx-1", "presente da Marina");
 
     for (const call of calls) {
       assert.ok(!/^[a-z]+:\/\//u.test(call.url), `url must be relative, got ${call.url}`);
       assert.ok(call.url.startsWith("/api/"), `url must start with /api/, got ${call.url}`);
     }
+  });
+
+  it("postTransactionCategory and postTransactionNote POST their bodies to the write routes", async () => {
+    const calls = captureFetch(() => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await postTransactionCategory({ ids: ["tx-1"], categoryId: "moradia" });
+    await postTransactionNote("tx-1", "presente da Marina");
+
+    assert.equal(calls[0]!.url, "/api/transactions/category");
+    assert.equal(calls[0]!.init.method, "POST");
+    assert.equal(calls[0]!.init.body, JSON.stringify({ ids: ["tx-1"], categoryId: "moradia" }));
+    assert.equal(calls[1]!.url, "/api/transactions/note");
+    assert.equal(calls[1]!.init.method, "POST");
+    assert.equal(calls[1]!.init.body, JSON.stringify({ transactionId: "tx-1", note: "presente da Marina" }));
   });
 
   it("omits the body on POSTs without one, sends JSON with one", async () => {

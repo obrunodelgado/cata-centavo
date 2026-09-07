@@ -4,6 +4,8 @@ import type { CategoryId } from "@cata-centavo/core";
 import type { CategoryWriter, Clock } from "@cata-centavo/core";
 import { isDocument } from "@cata-centavo/core";
 
+import { inTransaction } from "./in-transaction.ts";
+
 const systemClock: Clock = { now: () => new Date() };
 
 const OVERRIDE_UPSERT = `
@@ -118,17 +120,6 @@ function setCounterpartyCategory(
   });
 
   return { affected };
-}
-
-function inTransaction(db: DatabaseSync, work: () => void): void {
-  db.exec("BEGIN");
-  try {
-    work();
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
 }
 
 function placeholders(count: number): string {

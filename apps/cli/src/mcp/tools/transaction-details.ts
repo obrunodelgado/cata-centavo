@@ -117,6 +117,7 @@ function formatDetail(row: DerivedTransaction): unknown {
     category: row.category,
     categorySrc: row.categorySrc,
     categoryId: row.categoryId,
+    note: row.note,
     counterparty: formatCounterparty(row),
     paymentMethod: row.paymentMethod,
     instalment: formatInstalment(row),

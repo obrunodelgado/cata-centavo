@@ -101,3 +101,26 @@ test("the detail modal corrects a category and the change survives a reload", as
   await openTransactions(page);
   await expect(page.locator('[data-od-id="tx-list"]')).toContainText("Saúde");
 });
+
+test("the detail modal saves a note and the list row shows the hint chip", async ({ page }) => {
+  await openTransactions(page);
+
+  const firstRow = page.locator('[data-od-id="tx-list"] .ds-table tbody tr').first();
+  await expect(firstRow.locator(".tx-note")).toHaveCount(0);
+
+  await firstRow.click();
+  await expect(page.locator(".modal-backdrop.open")).toBeVisible();
+  await expect(page.locator(".modal-backdrop.open")).toContainText("Nota (opcional)");
+
+  await page.locator("#tx-note").fill("presente da Marina");
+  await page.locator(".modal-actions button", { hasText: "Salvar" }).click();
+  await expect(page.locator(".modal-backdrop.open")).toHaveCount(0);
+
+  await expect(firstRow.locator(".tx-note")).toHaveCount(1);
+  await expect(firstRow.locator(".tx-note")).toHaveAttribute("aria-label", "Tem nota: presente da Marina");
+  await expect(firstRow.locator(".tx-note")).toHaveAttribute("title", "presente da Marina");
+
+  // Reopening the modal prefills the saved note.
+  await firstRow.click();
+  await expect(page.locator("#tx-note")).toHaveValue("presente da Marina");
+});

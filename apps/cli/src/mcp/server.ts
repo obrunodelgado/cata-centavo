@@ -17,6 +17,7 @@ import { registerGetTransactionDetails } from "./tools/transaction-details.ts";
 import { registerGetTransactions, registerListTransactions } from "./tools/transactions.ts";
 import { registerGetInvestments } from "./tools/investments.ts";
 import { registerSetCategory, registerSetCounterpartyCategory } from "./tools/set-category.ts";
+import { registerSetTransactionNote } from "./tools/transaction-notes.ts";
 
 /** Creates the MCP server and registers its financial tools. */
 export function createServer(options: {
@@ -45,6 +46,7 @@ const REGISTRARS: readonly ((server: McpServer, deps: ToolDeps) => void)[] = [
   registerGetInvestments,
   registerSetCategory,
   registerSetCounterpartyCategory,
+  registerSetTransactionNote,
   registerListClosingDays,
   registerSetClosingDay,
   registerDeleteClosingDay,
@@ -57,13 +59,14 @@ const REGISTRARS: readonly ((server: McpServer, deps: ToolDeps) => void)[] = [
 function toolDeps(options: { readonly source: Source; readonly log: Logger }): ToolDeps {
   const clock: Clock = { now: () => new Date() };
   if (!options.source.ok) {
-    return { source: options.source, log: options.log, reader: null, writer: null, closingDays: null, clock };
+    return { source: options.source, log: options.log, reader: null, writer: null, noteWriter: null, closingDays: null, clock };
   }
   return {
     source: options.source,
     log: options.log,
     reader: options.source.reader,
     writer: options.source.writer,
+    noteWriter: options.source.noteWriter ?? null,
     closingDays: options.source.closingDays ?? null,
     clock,
   };

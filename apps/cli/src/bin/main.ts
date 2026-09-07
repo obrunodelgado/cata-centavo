@@ -15,6 +15,7 @@ import { createPluggyClient } from "@cata-centavo/pluggy";
 import { toFailure } from "@cata-centavo/pluggy";
 import { createCategoryWriter } from "@cata-centavo/storage";
 import { createClosingDayStore } from "@cata-centavo/storage";
+import { createTransactionNoteStore } from "@cata-centavo/storage";
 import { createTransactionStore } from "@cata-centavo/storage";
 import { readLocalState } from "@cata-centavo/storage";
 import { openDatabases, schemaVersion, type Databases } from "@cata-centavo/storage";
@@ -95,6 +96,7 @@ const sleep = (milliseconds: number): Promise<void> =>
 type LocalServices = {
   readonly reader: ReturnType<typeof createTransactionReader>;
   readonly writer: ReturnType<typeof createCategoryWriter>;
+  readonly noteWriter: ReturnType<typeof createTransactionNoteStore>;
   readonly closingDays: ReturnType<typeof createClosingDayStore>;
 };
 
@@ -126,6 +128,7 @@ function toSource(
     toFailure,
     reader: services.reader,
     writer: services.writer,
+    noteWriter: services.noteWriter,
     closingDays: services.closingDays,
   };
 }
@@ -252,9 +255,10 @@ function createReadySource(
     clock: systemClock,
   });
   const writer = createCategoryWriter(databases.db, systemClock);
+  const noteWriter = createTransactionNoteStore(databases.db, systemClock);
   const closingDays = createClosingDayStore(databases.db, systemClock);
 
-  return toSource(result, log, { reader, writer, closingDays });
+  return toSource(result, log, { reader, writer, noteWriter, closingDays });
 }
 
 

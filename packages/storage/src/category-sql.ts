@@ -1,7 +1,11 @@
 import { BRANCHES } from "@cata-centavo/core";
 
 /**
- * The six branches as six columns, plus the durable leaf.
+ * The six branches as six columns, plus the durable leaf — and, riding along,
+ * the user's note. The note is not a category branch and takes no part in the
+ * derivation; the column is selected here because every transaction read must
+ * carry it, and this is the one place `t` is already in scope to correlate
+ * against.
  *
  * `c_leaf` is the finest category we still know for the row: what Pluggy sends
  * today, and what the snapshot remembers once it stops sending anything. It is
@@ -32,7 +36,9 @@ export const DERIVED_COLUMNS = `
      WHERE t.document IS NOT NULL AND c.document = t.document AND c.origin = 'learned')       AS c_learned,
   (SELECT m.category FROM mcc_categories m WHERE m.mcc = t.mcc)    AS c_mcc,
   COALESCE(t.category_id, (SELECT s.category_id FROM userdata.category_snapshot s
-     WHERE s.transaction_id = t.id))                               AS c_leaf
+     WHERE s.transaction_id = t.id))                               AS c_leaf,
+  (SELECT n.note FROM userdata.transaction_notes n
+     WHERE n.transaction_id = t.id)                                AS note
 `;
 
 export const DERIVED_CATEGORY = `COALESCE(${BRANCHES.map((branch) => `c_${branch}`).join(", ")})`;

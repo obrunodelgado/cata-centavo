@@ -43,6 +43,7 @@ export function rowToDerived(row: Record<string, unknown>): DerivedTransaction {
   return {
     ...rowToTransaction(row),
     categoryId: nullableString(row["c_leaf"]),
+    note: nullableString(row["note"]),
     ...resolveCategory({
       override: nullableString(row["c_override"]),
       counterparty: nullableString(row["c_counterparty"]),

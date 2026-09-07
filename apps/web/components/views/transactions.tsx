@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { fetchCategories, fetchTransactions, postTransactionCategory, type TransactionsQuery } from "../../lib/api.ts";
+import { fetchCategories, fetchTransactions, postTransactionCategory, postTransactionNote, type TransactionsQuery } from "../../lib/api.ts";
 import type { BreakdownSlice, CategoryOption, TransactionRow, TransactionsResponse, TransactionTypeFilter } from "../../lib/contracts.ts";
 import { clockTimeOf, dayMonthShort } from "../../lib/datetime.ts";
 import { categoryColor, categoryName, paymentMethodClass } from "../../lib/labels.ts";
@@ -12,6 +12,7 @@ import { useApi } from "../../lib/use-api.ts";
 import { useDebounce } from "../../lib/use-debounce.ts";
 import { Button } from "../ui/button.tsx";
 import { Modal } from "../ui/modal.tsx";
+import { NoteChip } from "../ui/note-chip.tsx";
 import { Seg } from "../ui/seg.tsx";
 import { DataTable, type TableColumn } from "../ui/table.tsx";
 import { UnavailableNotice } from "../ui/unavailable-notice.tsx";
@@ -20,10 +21,12 @@ import { UnavailableNotice } from "../ui/unavailable-notice.tsx";
  * Transações — the prototype's searchable, filterable list fed by
  * `/api/transactions`. The count is the server's `totalInWindow` (never the
  * loaded rows'), the sidebar is the payload's `breakdown`, and "Mostrar mais"
- * appends pages through the opaque `after` token. The category correction is
- * real: it saves through the category route, patches the row in place and
- * silently refetches the head so the sidebar keeps up — scroll and pagination
- * stay put.
+ * appends pages through the opaque `after` token. The detail modal's edits are
+ * real: one "Salvar alterações" action persists the category and the note —
+ * each only when it changed — patches the row in place and silently refetches
+ * the head so the sidebar keeps up; scroll and pagination stay put. A row
+ * with a note shows the small hint chip in the list; the native `title` is
+ * the v1 tooltip.
  */
 
 const NEXT_PAGES = 100;
@@ -146,25 +149,48 @@ export function TransactionsView({ range, periodStart, periodEnd, refreshKey }: 
       });
   }, [nextAfter, loadingMore, request]);
 
-  const saveCategory = useCallback(
-    (row: TransactionRow, category: string) => {
+  const saveChanges = useCallback(
+    (row: TransactionRow, category: string, note: string) => {
+      const categoryChanged = category !== "" && category !== row.categoryId;
+      const noteChanged = note.trim() !== (row.note ?? "");
+      if (!categoryChanged && !noteChanged) {
+        return;
+      }
       setSaving(true);
       setSaveProblem(null);
-      postTransactionCategory({ ids: [row.id], categoryId: category })
-        .then((result) => {
-          if (result.unknownIds.includes(row.id)) {
+      Promise.all([
+        categoryChanged ? postTransactionCategory({ ids: [row.id], categoryId: category }) : Promise.resolve(null),
+        noteChanged ? postTransactionNote(row.id, note) : Promise.resolve(null),
+      ])
+        .then(([categoryResult, noteResult]) => {
+          if (categoryResult !== null && categoryResult.unknownIds.includes(row.id)) {
             setSaveProblem("Esta transação não está mais no cache. Recarregue a página e tente de novo.");
             return;
           }
-          const corrected = (candidate: TransactionRow): TransactionRow =>
-            candidate.id === row.id ? { ...candidate, categoryId: category, categoryName: categoryName(category), categorySrc: "override" } : candidate;
+          if (noteResult !== null && !noteResult.known) {
+            setSaveProblem("Esta transação não está mais no cache. Recarregue a página e tente de novo.");
+            return;
+          }
+          const corrected = (candidate: TransactionRow): TransactionRow => {
+            if (candidate.id !== row.id) {
+              return candidate;
+            }
+            let updated = candidate;
+            if (categoryChanged) {
+              updated = { ...updated, categoryId: category, categoryName: categoryName(category), categorySrc: "override" };
+            }
+            if (noteChanged) {
+              updated = { ...updated, note: noteResult !== null ? noteResult.note : note.trim() };
+            }
+            return updated;
+          };
           setHead((current) => (current !== null && current.ok ? { ...current, rows: current.rows.map(corrected) } : current));
           setAppended((current) => current.map(corrected));
           list.refetch();
           setDetail(null);
         })
         .catch(() => {
-          setSaveProblem("Não foi possível salvar a categoria. Tente de novo.");
+          setSaveProblem("Não foi possível salvar as alterações. Tente de novo.");
         })
         .finally(() => {
           setSaving(false);
@@ -298,7 +324,7 @@ export function TransactionsView({ range, periodStart, periodEnd, refreshKey }: 
           setDetail(null);
           setSaveProblem(null);
         }}
-        onSave={saveCategory}
+        onSave={saveChanges}
       />
     </section>
   );
@@ -325,6 +351,7 @@ const COLUMNS: readonly TableColumn<TransactionRow>[] = [
               interna
             </span>
           ) : null}
+          {row.note !== null ? <NoteChip note={row.note} /> : null}
         </div>
       </div>
     ),
@@ -436,12 +463,14 @@ function TransactionDetailModal({
   readonly saving: boolean;
   readonly problem: string | null;
   readonly onClose: () => void;
-  readonly onSave: (row: TransactionRow, categoryId: string) => void;
+  readonly onSave: (row: TransactionRow, categoryId: string, note: string) => void;
 }) {
   const [selected, setSelected] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => {
     setSelected(row?.categoryId ?? "");
+    setNoteDraft(row?.note ?? "");
   }, [row]);
 
   if (row === null) {
@@ -449,7 +478,9 @@ function TransactionDetailModal({
   }
 
   const time = clockTimeOf(row.occurredAt);
-  const unchanged = selected === "" || selected === row.categoryId;
+  const categoryChanged = selected !== "" && selected !== row.categoryId;
+  const noteChanged = noteDraft.trim() !== (row.note ?? "");
+  const unchanged = !categoryChanged && !noteChanged;
 
   return (
     <Modal
@@ -488,15 +519,29 @@ function TransactionDetailModal({
           ))}
         </select>
         {row.categorySrc === "override" ? <p className="meta" style={{ margin: 0 }}>Corrigida por você</p> : null}
-        {problem !== null ? <p className="meta" style={{ color: "var(--neg)" }}>{problem}</p> : null}
       </div>
+
+      <div className="field" style={{ marginTop: 14 }}>
+        <label htmlFor="tx-note">Nota (opcional)</label>
+        <textarea
+          id="tx-note"
+          className="input"
+          rows={2}
+          maxLength={500}
+          placeholder="Ex.: presente da Marina"
+          value={noteDraft}
+          onChange={(event) => setNoteDraft(event.target.value)}
+        />
+      </div>
+
+      {problem !== null ? <p className="meta" style={{ color: "var(--neg)", marginTop: 12 }}>{problem}</p> : null}
 
       <div className="modal-actions">
         <Button variant="secondary" onClick={onClose}>
           Fechar
         </Button>
-        <Button variant="primary" disabled={saving || selected === "" || unchanged} onClick={() => onSave(row, selected)}>
-          {saving ? "Salvando…" : "Salvar"}
+        <Button variant="primary" disabled={saving || unchanged} onClick={() => onSave(row, selected, noteDraft)}>
+          {saving ? "Salvando…" : "Salvar alterações"}
         </Button>
       </div>
     </Modal>

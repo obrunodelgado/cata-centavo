@@ -203,6 +203,7 @@ function transactionRow(row: DerivedTransaction, accountNames: ReadonlyMap<strin
     categoryId: row.category,
     categoryName: categoryName(row.category),
     categorySrc: row.categorySrc,
+    note: row.note,
     accountId: row.accountId,
     accountName: accountNames.get(row.accountId) ?? row.accountId,
     paymentMethod: paymentMethodOf(row),

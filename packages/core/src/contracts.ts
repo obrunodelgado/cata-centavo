@@ -196,3 +196,19 @@ export type ClosingDayStore = {
   set(accountId: string, day: number): void;
   delete(accountId: string): number;
 };
+
+/**
+ * The note writes `data.db` accepts: one user-authored annotation per
+ * transaction, never dropped with the cache (§10). The store owns the
+ * trim-and-empty rule — an empty result clears the stored note — so both
+ * surfaces (MCP and web) share one definition of absence.
+ */
+export type TransactionNoteStore = {
+  set(transactionId: string, note: string | null): {
+    readonly transactionId: string;
+    /** The stored note after the write; `null` when absent. */
+    readonly note: string | null;
+    /** Whether the id is in the cache; a stale id is reported, never written. */
+    readonly known: boolean;
+  };
+};

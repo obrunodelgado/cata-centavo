@@ -221,6 +221,7 @@ function recentRows(
     amountCents: row.amountCents,
     status: row.localDate > today ? "Futuro" : "Pago",
     internal: isSelfTransfer(row),
+    note: row.note,
   }));
 }
 
