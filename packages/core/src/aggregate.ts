@@ -34,6 +34,10 @@ type GroupState = {
  * free — while the `categories` filter, which resolves the same rows in SQL,
  * kept returning them. Two totals for one question is the failure the PRD's
  * first rule names.
+ *
+ * Internal transfers (`isSelfTransfer`, ADR-0003) never reach the groups
+ * either, so the category breakdown and the period totals can never disagree:
+ * a row excluded from `spentCents` does not show up in the donut.
  */
 export function aggregate(rows: readonly DerivedTransaction[], today: string): Aggregate {
   const groups = new Map<CategoryId | null, GroupState>();
@@ -53,6 +57,9 @@ export function aggregate(rows: readonly DerivedTransaction[], today: string): A
 }
 
 function addToGroup(groups: Map<CategoryId | null, GroupState>, row: DerivedTransaction): void {
+  if (isSelfTransfer(row)) {
+    return;
+  }
   const categoryId = row.category;
   let group = groups.get(categoryId);
   if (group === undefined) {
@@ -72,12 +79,12 @@ type Totals = {
 };
 
 function addToTotals(totals: Totals, row: DerivedTransaction, today: string): void {
+  if (isSelfTransfer(row)) {
+    return;
+  }
   if (row.localDate > today) {
     totals.upcomingCents += row.amountCents;
     totals.upcomingCount += 1;
-    return;
-  }
-  if (isSelfTransfer(row)) {
     return;
   }
   if (row.amountCents < 0) {

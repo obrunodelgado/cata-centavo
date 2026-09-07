@@ -289,6 +289,19 @@ describe("lib/series — bucketSeries", () => {
     assert.equal(series.receivedCents[9], 0);
   });
 
+  it("excludes investment moves but keeps dividend earnings, like core/aggregate", () => {
+    const window = windowSpec("1M", "2026-08-30");
+    const rows = [
+      derived({ localDate: "2026-08-10", amountCents: -5000, categoryId: "03000000" }),
+      derived({ localDate: "2026-08-10", amountCents: 3000, categoryId: "03000000" }),
+      derived({ localDate: "2026-08-10", amountCents: 200, categoryId: "03060000" }),
+      derived({ localDate: "2026-08-10", amountCents: -1000 }),
+    ];
+    const series = bucketSeries(window, rows, today);
+    assert.equal(series.spentCents[9], 1000);
+    assert.equal(series.receivedCents[9], 200);
+  });
+
   it("excludes upcoming rows (after today), the aggregate's rule", () => {
     // With a future anchor the whole window is after today: nothing counts,
     // the same answer core/aggregate gives the anchor slice.
