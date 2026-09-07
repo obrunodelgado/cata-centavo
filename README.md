@@ -36,7 +36,7 @@ You run it on your machine, against your own accounts, and the categories you co
 
 ## Install
 
-You need Node 22.13 or newer, and a Pluggy account with your banks already connected.
+You need Node 24.15.0 or newer, and a Pluggy account with your banks already connected.
 
 ### Getting your Pluggy keys
 
