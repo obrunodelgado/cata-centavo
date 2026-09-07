@@ -466,6 +466,8 @@ The category becomes a union type / `z.enum` in `core/category.ts`, and tool val
 >
 > Step 3 is done as well, empirically and ahead of this section's ordering: see §12.2's amendment for the 87-code MCC map. Source: `docs/research/2026-07-26-phase-0-5-recon.md`, §"The category taxonomy".
 
+> **Amendment, 2026-09-07 — a local block on top of the closed list.** The closed list gains top-level categories that Pluggy does not serve, for spending the user wants visible on its own rather than scattered across Pluggy's groups: **Pet** (`00000000`, pet costs otherwise split across Shopping and Healthcare), **Restaurantes** (`00000001`, eating out split off the broader Alimentos e bebidas) and **Estudo** (`00000002`, tuition and courses otherwise buried under Services). Local ids carry the `00` prefix, deliberately outside Pluggy's allocation: their sequence starts at `01`, so their next real top-level category would plausibly claim `22000000`, and a collision there would silently file a foreign category's money under a local one. Nothing derives a 00-prefix category — the MCC table stays data-derived and Pluggy never sends the id — so a row reaches one only through a user override or a manual counterparty rule. The tree in `taxonomy-tree.ts` carries the local roots apart from the served entries so the provenance stays visible.
+
 ### 12.5 Description normalization
 
 A **pure** function living in `core/`, applied in two places: when writing `transactions.description_norm`, and when writing a rule's `description_contains`.

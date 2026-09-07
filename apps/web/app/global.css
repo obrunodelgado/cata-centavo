@@ -24,14 +24,35 @@
   --accent-soft: color-mix(in oklch, var(--accent) 12%, transparent);
   --fg-soft:     color-mix(in oklch, var(--fg) 6%, transparent);
 
-  /* séries de dados (encoding de gráficos — nunca igual ao acento de UI) */
+  /* séries de dados (encoding de gráficos — nunca igual ao acento de UI).
+     Uma cor por categoria de topo: duas categorias na mesma cor tornam as
+     fatias do donut e os pontos da lista indistinguíveis. Matizes a ~15–25°
+     de distância, com L/C diferenciando os pares vizinhos. */
   --c1: oklch(55% 0.16 255);   /* azul           — Moradia */
   --c2: oklch(62% 0.11 185);   /* ciano          — Saúde */
-  --c3: oklch(72% 0.15 85);    /* âmbar          — Alimentação */
+  --c3: oklch(72% 0.15 85);    /* âmbar          — Supermercado */
   --c4: oklch(58% 0.13 150);   /* verde          — Transporte */
   --c5: oklch(60% 0.14 30);    /* terracota      — Lazer */
   --c6: oklch(60% 0.12 305);   /* violeta        — Assinaturas */
-  --c7: oklch(58% 0.03 250);   /* cinza          — Outros */
+  --c7: oklch(58% 0.03 250);   /* cinza          — Outros e fallback */
+  --c8: oklch(70% 0.12 65);    /* dourado        — Renda */
+  --c9: oklch(45% 0.07 55);    /* marrom         — Empréstimos e financiamento */
+  --c10: oklch(55% 0.12 132);  /* esmeralda      — Investimentos */
+  --c11: oklch(58% 0.08 230);  /* azul-aço       — Transferência mesma titularidade */
+  --c12: oklch(50% 0.14 240);  /* azul-royal     — Transferências */
+  --c13: oklch(62% 0.13 95);   /* lima           — Obrigações legais */
+  --c14: oklch(52% 0.14 272);  /* índigo         — Serviços */
+  --c15: oklch(65% 0.14 45);   /* laranja        — Compras */
+  --c16: oklch(58% 0.16 325);  /* magenta        — Alimentos e bebidas */
+  --c17: oklch(60% 0.12 210);  /* turquesa       — Viagens */
+  --c18: oklch(70% 0.11 350);  /* rosa           — Doações */
+  --c19: oklch(55% 0.13 290);  /* púrpura        — Apostas */
+  --c20: oklch(52% 0.15 10);   /* vermelho       — Impostos */
+  --c21: oklch(58% 0.12 115);  /* oliva          — Taxas bancárias */
+  --c22: oklch(65% 0.11 165);  /* menta          — Seguros */
+  --c23: oklch(70% 0.13 20);   /* salmão         — Pet */
+  --c24: oklch(66% 0.14 337);  /* framboesa      — Restaurantes */
+  --c25: oklch(58% 0.14 75);   /* mostarda       — Estudo */
 
   --pos: oklch(46% 0.13 155);
   --neg: oklch(50% 0.19 27);

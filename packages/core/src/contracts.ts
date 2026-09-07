@@ -131,6 +131,14 @@ export type TransactionFilter = {
   readonly from: string;
   readonly to: string;
   readonly categories?: readonly CategoryFilterValue[];
+  /**
+   * Free text matched against the description and the counterparty. Case is
+   * always insensitive; accents are folded on the description side (through
+   * `description_norm`, the query-side half of the contract in
+   * `core/description.ts`) and ASCII-case only on the counterparty, which has
+   * no normalized column.
+   */
+  readonly q?: string;
   readonly minAmountCents?: number;
   readonly maxAmountCents?: number;
   readonly accountType?: Account["type"];

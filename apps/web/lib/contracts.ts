@@ -82,6 +82,70 @@ export function json(payload: unknown, status = 200): Response {
   });
 }
 
+/* ─── /api/transactions ─────────────────────────────────────────── */
+
+/** The tipo segment: which direction of movement the list shows. */
+export type TransactionTypeFilter = "todas" | "receitas" | "despesas";
+
+export type TransactionRow = {
+  readonly id: string;
+  readonly localDate: string;
+  /** The instant as reported, untruncated; the modal derives the clock time. */
+  readonly occurredAt: string;
+  readonly description: string;
+  readonly categoryId: string | null;
+  readonly categoryName: string | null;
+  /** Where the category came from — the modal shows it when this is "override". */
+  readonly categorySrc: string | null;
+  readonly accountId: string;
+  readonly accountName: string;
+  /** The forma de pagamento label, fallbacks resolved server-side. */
+  readonly paymentMethod: string;
+  /** An internal transfer (ADR-0003): displayed with the "interna" tag, never a receita or a despesa. */
+  readonly internal: boolean;
+  readonly amountCents: number;
+  /** Derived at request time from `localDate` against today — never stored. */
+  readonly status: "Futuro" | "Pago";
+};
+
+/** One sidebar entry: the category's share of the filtered window. */
+export type BreakdownSlice = {
+  readonly categoryId: string | null;
+  readonly name: string;
+  /** Absolute cents; the direction is the active tipo filter's. */
+  readonly totalCents: number;
+  readonly count: number;
+};
+
+export type TransactionsResponse =
+  | {
+      readonly ok: true;
+      readonly rows: readonly TransactionRow[];
+      readonly hasMore: boolean;
+      /** The opaque keyset token for the next page; null on the last page. */
+      readonly nextAfter: string | null;
+      /** The whole filtered window's row count — the "N transações" subtitle. */
+      readonly totalInWindow: number;
+      /** Per-category totals for the window, ignoring the category filter. */
+      readonly breakdown: readonly BreakdownSlice[];
+      readonly unavailable: readonly FailureRow[];
+    }
+  | { readonly ok: false; readonly problems: readonly string[] };
+
+export type CategoryOption = {
+  readonly id: string;
+  readonly name: string;
+};
+
+export type CategoriesResponse = {
+  readonly categories: readonly CategoryOption[];
+};
+
+export type CategoryWriteResponse = {
+  readonly updated: number;
+  readonly unknownIds: readonly string[];
+};
+
 /* ─── /api/overview ─────────────────────────────────────────────── */
 
 export type OverviewWindow = {

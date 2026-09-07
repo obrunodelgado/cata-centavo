@@ -1,9 +1,16 @@
 /**
  * The project's closed category list: Pluggy's 22 top-level categories, taken
  * verbatim from `GET /categories` (ADR §12.4 step 2 — copy a taxonomy already
- * validated in production rather than invent one). Every child category rolls
- * up to its top-level ancestor; the full 130-entry tree and that roll-up
- * belong with the `cache.db` seed, not here.
+ * validated in production rather than invent one), plus a small local block.
+ * Every child category rolls up to its top-level ancestor; the full tree and
+ * that roll-up live in `taxonomy-tree.ts`.
+ *
+ * **The 00-prefix ids are ours, not Pluggy's.** Pluggy's sequence starts at
+ * `01`, so their next real top-level category would plausibly claim
+ * `22000000` — a local id there would one day collide with it. Nothing derives
+ * a 00-prefix category: no Pluggy transaction carries the id and the MCC table
+ * is derived from data, so a row reaches one only through a user override
+ * (ADR §12.4's amendment of 2026-09-07).
  *
  * A `const` object plus a derived union, not an `enum` (ADR §13): `enum` is not
  * erasable syntax, and a string `enum` is nominal, so a category arriving as
@@ -15,10 +22,10 @@
  * enumerate *before* `"01000000"` in every `Object.keys`; as a value the
  * declaration order survives.
  *
- * **The ids are not uniform width.** All 22 top-level ids are 8 digits, but the
+ * **The ids are not uniform width.** All 25 top-level ids are 8 digits, but the
  * taxonomy underneath them is not: Insurance's four children use 9, starting at
  * `"200100000"` (Life insurance). Anything deriving a parent by slicing an id at
- * a fixed offset works on 126 of the 130 entries and breaks on those four.
+ * a fixed offset works on 126 of the 130 Pluggy entries and breaks on those four.
  */
 export const CATEGORIES = {
   income:             { id: "01000000", en: "Income", pt: "Renda" },
@@ -42,10 +49,13 @@ export const CATEGORIES = {
   transportation:     { id: "19000000", en: "Transportation", pt: "Transporte" },
   insurance:          { id: "20000000", en: "Insurance", pt: "Seguros" },
   leisure:            { id: "21000000", en: "Leisure", pt: "Lazer" },
+  pet:                { id: "00000000", en: "Pet", pt: "Pet" },
+  restaurants:        { id: "00000001", en: "Restaurants", pt: "Restaurantes" },
+  study:              { id: "00000002", en: "Study", pt: "Estudo" },
   other:              { id: "99999999", en: "Other", pt: "Outros" },
 } as const;
 
-/** One category: Pluggy's id plus its two labels. The user reads Portuguese. */
+/** One category: its id plus its two labels. The user reads Portuguese. */
 export type Category = (typeof CATEGORIES)[keyof typeof CATEGORIES];
 
 /** The closed list as a type. Free-form category strings are rejected (ADR §12.4). */
@@ -55,7 +65,7 @@ const BY_ID: ReadonlyMap<string, Category> = new Map(
   Object.values(CATEGORIES).map((category) => [category.id, category]),
 );
 
-/** Every valid category id, in Pluggy's own order. */
+/** Every valid category id, in declaration order — Pluggy's, with Pet before the escape hatch. */
 export const CATEGORY_IDS: readonly CategoryId[] = Object.values(CATEGORIES).map((category) => category.id);
 
 /**

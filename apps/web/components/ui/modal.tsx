@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 type ModalProps = {
   readonly title: string;
@@ -10,19 +10,27 @@ type ModalProps = {
   readonly children: ReactNode;
 };
 
-/** The prototype's modal: backdrop, Escape and click-outside close, focus on first control. */
+/** The prototype's modal: backdrop, Escape and click-outside close, focus on open, restored on close. */
 export function Modal({ title, sub, open, onClose, children }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!open) {
       return;
     }
+    previousFocus.current = document.activeElement as HTMLElement | null;
+    modalRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previousFocus.current?.focus();
+    };
   }, [open, onClose]);
 
   if (!open) {
@@ -31,7 +39,7 @@ export function Modal({ title, sub, open, onClose, children }: ModalProps) {
 
   return (
     <div className="modal-backdrop open" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="modal">
+      <div className="modal" ref={modalRef} tabIndex={-1}>
         <div className="card-head" style={{ marginBottom: "10px" }}>
           <div>
             <h2 id="modalTitle">{title}</h2>

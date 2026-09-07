@@ -17,7 +17,7 @@ export type TaxonomyEntry = {
  * is exposed to the same plan change as the transaction enrichment, and a
  * roll-up that stops working is an aggregate that stops working (design D3).
  *
- * Only `id` and `parentId` are here. The labels the user reads belong to the 22
+ * Only `id` and `parentId` are here. The labels the user reads belong to the
  * top-level categories and already live in `category.ts`.
  *
  * `02030001`, `02030002` and `02030003` carry `parentId: "02000000"` while
@@ -156,4 +156,10 @@ export const TAXONOMY: readonly TaxonomyEntry[] = [
   { id: "200400000", parentId: "20000000" },
   { id: "21000000", parentId: null },
   { id: "99999999", parentId: null },
+
+  // Not Pluggy's — the local 00-prefix roots, kept apart from the served tree
+  // so the provenance stays visible (see category.ts for the id choice).
+  { id: "00000000", parentId: null },
+  { id: "00000001", parentId: null },
+  { id: "00000002", parentId: null },
 ];

@@ -6,16 +6,16 @@ import { buildRollup, topCategoryOf, type TaxonomyEntry } from "@cata-centavo/co
 import { TAXONOMY } from "@cata-centavo/core";
 
 describe("the shipped taxonomy", () => {
-  it("carries every entry Pluggy served", () => {
-    assert.equal(TAXONOMY.length, 130);
+  it("carries every entry Pluggy served plus the local roots", () => {
+    assert.equal(TAXONOMY.length, 133);
   });
 
-  it("has exactly the 22 top-level categories as roots", () => {
+  it("has exactly the 25 top-level categories as roots", () => {
     const roots = TAXONOMY.filter((entry) => entry.parentId === null).map((entry) => entry.id);
     assert.deepEqual([...roots].sort(), [...CATEGORY_IDS].sort());
   });
 
-  it("rolls every entry up to one of the 22", () => {
+  it("rolls every entry up to one of the 25", () => {
     for (const entry of TAXONOMY) {
       assert.ok(CATEGORY_IDS.includes(topCategoryOf(entry.id) as never), `${entry.id} did not roll up`);
     }

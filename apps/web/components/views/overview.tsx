@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { fetchOverview, type OverviewQuery } from "../../lib/api.ts";
+import { fetchOverview } from "../../lib/api.ts";
 import type { CategorySlice, OverviewResponse, OverviewSource, RecentRow } from "../../lib/contracts.ts";
+import { dayMonthShort } from "../../lib/datetime.ts";
+import { categoryColor, paymentMethodClass } from "../../lib/labels.ts";
 import { DEMO_BUDGETS, DEMO_GOALS, DEMO_INSIGHTS } from "../../lib/demo-data.ts";
 import { centsToBRL, centsToBRLShort, centsToSignedBRL, percentBRL } from "../../lib/money.ts";
 import type { Range } from "../../lib/series.ts";
+import { useApi } from "../../lib/use-api.ts";
 import { DonutChart } from "../charts/donut-chart.tsx";
 import { FlowChart, type FlowDatum } from "../charts/flow-chart.tsx";
 import { Sparkline } from "../charts/sparkline.tsx";
 import { Button } from "../ui/button.tsx";
 import { Modal } from "../ui/modal.tsx";
 import { Pill } from "../ui/pill.tsx";
+import { DataTable, type TableColumn } from "../ui/table.tsx";
+import { UnavailableNotice } from "../ui/unavailable-notice.tsx";
 
 /**
  * Visão geral — the prototype's layout fed by `/api/overview`. Every number a
@@ -35,41 +40,12 @@ type OverviewViewProps = {
 };
 
 /** The series palette keyed by top-level category; anything else is `--c7`. */
-const CATEGORY_COLOR: Readonly<Record<string, string>> = {
-  "17000000": "var(--c1)", // Moradia
-  "18000000": "var(--c2)", // Saúde
-  "10000000": "var(--c3)", // Supermercado
-  "11000000": "var(--c3)", // Alimentos e bebidas
-  "19000000": "var(--c4)", // Transporte
-  "21000000": "var(--c5)", // Lazer
-  "09000000": "var(--c6)", // Serviços digitais (assinaturas)
-};
 
 const INVESTMENT_COLORS = ["var(--c1)", "var(--c4)", "var(--c2)", "var(--c6)", "var(--c7)"] as const;
 
 export function OverviewView({ range, periodStart, periodEnd, refreshKey, onVerTodas }: OverviewViewProps) {
-  const [payload, setPayload] = useState<OverviewResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setError(null);
-    const query: OverviewQuery = { range, from: periodStart, to: periodEnd };
-    fetchOverview(query)
-      .then((response) => {
-        if (!cancelled) {
-          setPayload(response);
-        }
-      })
-      .catch((reason: unknown) => {
-        if (!cancelled) {
-          setError(reason instanceof Error ? reason.message : String(reason));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [range, periodStart, periodEnd, refreshKey]);
+  const requestKey = `${range}|${periodStart}|${periodEnd}|${refreshKey}`;
+  const { data: payload, error, loading } = useApi(requestKey, () => fetchOverview({ range, from: periodStart, to: periodEnd }));
 
   if (error !== null) {
     return (
@@ -82,7 +58,7 @@ export function OverviewView({ range, periodStart, periodEnd, refreshKey, onVerT
     );
   }
 
-  if (payload === null) {
+  if (loading || payload === null) {
     return (
       <section className="view enter" aria-label="Visão geral">
         <div className="card">
@@ -214,7 +190,14 @@ function OverviewLoaded({ payload, onVerTodas }: {
               Ver todas
             </Button>
           </div>
-          <RecentTable rows={recent} onSelect={setDetail} />
+          <DataTable
+            columns={RECENT_COLUMNS}
+            rows={recent}
+            rowKey={(row) => row.id}
+            emptyMessage="Sem movimentações neste período."
+            onActivate={setDetail}
+            rowAriaLabel={(row) => `Ver detalhes: ${row.description}`}
+          />
         </div>
         <div className="card" data-od-id="orcamentos-mini">
           <div className="card-head">
@@ -412,92 +395,49 @@ function slicePercent(category: CategorySlice, totalCents: number): string {
   return percentBRL(Math.round((category.spentCents / totalCents) * 1000) / 10);
 }
 
-function categoryColor(categoryId: string | null): string {
-  if (categoryId === null) {
-    return "var(--c7)";
-  }
-  return CATEGORY_COLOR[categoryId] ?? "var(--c7)";
-}
-
-function RecentTable({
-  rows,
-  onSelect,
-}: {
-  readonly rows: readonly RecentRow[];
-  readonly onSelect: (row: RecentRow) => void;
-}) {
-  return (
-    <div className="tbl-scroll">
-      <table className="ds-table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Descrição</th>
-            <th>Tipo</th>
-            <th>Status</th>
-            <th className="num-col">Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={5} style={{ textAlign: "center", color: "var(--muted)", padding: "24px 0" }}>
-                Sem movimentações neste período.
-              </td>
-            </tr>
-          ) : (
-            rows.map((row) => <RecentRowItem key={row.id} row={row} onSelect={onSelect} />)
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function RecentRowItem({
-  row,
-  onSelect,
-}: {
-  readonly row: RecentRow;
-  readonly onSelect: (row: RecentRow) => void;
-}) {
-  return (
-    <tr
-      tabIndex={0}
-      role="button"
-      aria-label={`Ver detalhes: ${row.description}`}
-      onClick={() => onSelect(row)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect(row);
-        }
-      }}
-    >
-      <td className="num" style={{ whiteSpace: "nowrap" }}>
-        {dayMonthShort(row.localDate)}
-      </td>
-      <td>
+/** The recent table's columns, shared shape with the transactions view's table. */
+const RECENT_COLUMNS: readonly TableColumn<RecentRow>[] = [
+  {
+    header: "Data",
+    numeric: true,
+    render: (row) => <span style={{ whiteSpace: "nowrap" }}>{dayMonthShort(row.localDate)}</span>,
+  },
+  {
+    header: "Descrição",
+    render: (row) => (
+      <div>
         <div className="tx-desc">{row.description}</div>
         <div className="tx-cat">
           <i style={{ background: categoryColor(row.categoryId) }}></i>
           {row.categoryName ?? "Sem categoria"}
-          {row.internal ? <span className="tag" style={{ marginLeft: 6 }}>interna</span> : null}
+          {row.internal ? (
+            <span className="tag" style={{ marginLeft: 6 }}>
+              interna
+            </span>
+          ) : null}
         </div>
-      </td>
-      <td>
-        <span className={`tx-type ${tipoClass(row)}`}>{row.paymentMethod}</span>
-      </td>
-      <td>
-        <span className="tag">{row.status}</span>
-      </td>
-      <td className={`num-col ${row.amountCents > 0 ? "val-pos" : "val-neg"}`}>
+      </div>
+    ),
+  },
+  {
+    header: "Tipo",
+    render: (row) => <span className={`tx-type ${paymentMethodClass(row)}`}>{row.paymentMethod}</span>,
+  },
+  {
+    header: "Status",
+    render: (row) => <span className="tag">{row.status}</span>,
+  },
+  {
+    header: "Valor",
+    numeric: true,
+    render: (row) => (
+      <span className={row.amountCents > 0 ? "val-pos" : "val-neg"}>
         {row.amountCents > 0 ? "+" : ""}
         {centsToBRL(row.amountCents)}
-      </td>
-    </tr>
-  );
-}
+      </span>
+    ),
+  },
+];
 
 /** Read-only detail: the model's modal minus the editable fields that ticket 07 owns. */
 function RecentDetailModal({ row, onClose }: { readonly row: RecentRow | null; readonly onClose: () => void }) {
@@ -528,25 +468,8 @@ function RecentDetailModal({ row, onClose }: { readonly row: RecentRow | null; r
   );
 }
 
-function tipoClass(row: RecentRow): string {
-  if (row.amountCents > 0) {
-    return "tx-rec";
-  }
-  if (row.paymentMethod === "PIX") {
-    return "tx-pix";
-  }
-  return "tx-bol";
-}
-
 function dayMonth(localDate: string): string {
   return `${localDate.slice(8, 10)}/${localDate.slice(5, 7)}`;
-}
-
-const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"] as const;
-
-/** "19 mar" — the prototype's short date for the recent list. */
-function dayMonthShort(localDate: string): string {
-  return `${Number(localDate.slice(8, 10))} ${MONTHS_SHORT[Number(localDate.slice(5, 7)) - 1] ?? "?"}`;
 }
 
 function BudgetRow({
@@ -612,25 +535,3 @@ function FreshnessLine({ sources, stale }: { readonly sources: readonly Overview
   );
 }
 
-function UnavailableNotice({ unavailable }: { readonly unavailable: readonly { readonly kind: string; readonly message: string }[] }) {
-  return (
-    <div className="card" role="alert" style={{ borderColor: "var(--neg)", background: "var(--neg-soft)" }}>
-      <div className="card-head" style={{ marginBottom: 0 }}>
-        <div>
-          <div className="card-title" style={{ color: "var(--neg)" }}>
-            Conexões indisponíveis
-          </div>
-          <div className="card-sub">Os números acima refletem apenas as conexões saudáveis.</div>
-        </div>
-        <Pill tone="neg">indisponível</Pill>
-      </div>
-      <ul style={{ margin: "10px 0 0", paddingLeft: 18 }}>
-        {unavailable.map((failure) => (
-          <li key={failure.message} className="card-sub">
-            {failure.message}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}

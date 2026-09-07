@@ -1,4 +1,4 @@
-import { aggregate, categoryById, collectAccounts, collectInvestments, isSelfTransfer, summarizeInvestments, todayIn, type Account, type InvestmentPosition } from "@cata-centavo/core";
+import { aggregate, collectAccounts, collectInvestments, isSelfTransfer, summarizeInvestments, todayIn, type Account, type InvestmentPosition } from "@cata-centavo/core";
 import { z } from "zod";
 
 import {
@@ -15,6 +15,7 @@ import {
   type OverviewSource,
   type RecentRow,
 } from "../contracts.ts";
+import { categoryName, paymentMethodOf } from "../labels.ts";
 import { bucketSeries, customWindow, isCalendarDay, RANGES, windowSpec, type WindowSpec } from "../series.ts";
 import type { WebSource } from "../server/composition.ts";
 
@@ -173,13 +174,6 @@ function categorySlice(group: { readonly categoryId: string | null; readonly tot
   };
 }
 
-function categoryName(categoryId: string | null): string {
-  if (categoryId === null) {
-    return "Sem categoria";
-  }
-  return categoryById(categoryId)?.pt ?? categoryId;
-}
-
 function savingsRateOf(receivedCents: number, spentCents: number): number | null {
   if (receivedCents <= 0) {
     return null;
@@ -223,35 +217,11 @@ function recentRows(
     categoryId: row.category,
     categoryName: categoryName(row.category),
     accountId: row.accountId,
-    paymentMethod: tipoOf(row),
+    paymentMethod: paymentMethodOf(row),
     amountCents: row.amountCents,
     status: row.localDate > today ? "Futuro" : "Pago",
     internal: isSelfTransfer(row),
   }));
-}
-
-/** Pluggy's paymentMethod raw values in pt-BR; unknown values render as themselves. */
-const PAYMENT_METHOD_NAMES: Readonly<Record<string, string>> = {
-  PIX: "PIX",
-  BOLETO: "Boleto",
-  TED: "TED",
-  DEBIT: "Débito",
-  OTHER: "Outro",
-};
-
-/**
- * Pluggy omits `paymentData` on card rows — most of the recent list — so the
- * account type fills the gap: a movement on a CREDIT account is a card
- * movement. Only rows with neither land as an em dash.
- */
-function tipoOf(row: { readonly paymentMethod: string | null; readonly accountType: Account["type"] }): string {
-  if (row.paymentMethod !== null) {
-    return PAYMENT_METHOD_NAMES[row.paymentMethod] ?? row.paymentMethod;
-  }
-  if (row.accountType === "CREDIT") {
-    return "Cartão";
-  }
-  return "—";
 }
 
 function investmentsSlice(positions: readonly { readonly type: string; readonly balanceCents: number }[]): OverviewInvestments {

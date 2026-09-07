@@ -1,4 +1,4 @@
-import type { AccountsResponse, OverviewResponse, SourcesResponse, SyncResponse } from "./contracts.ts";
+import type { AccountsResponse, CategoriesResponse, CategoryWriteResponse, OverviewResponse, SourcesResponse, SyncResponse, TransactionsResponse, TransactionTypeFilter } from "./contracts.ts";
 import type { Range } from "./series.ts";
 
 /**
@@ -83,4 +83,56 @@ export function fetchOverview(query: OverviewQuery): Promise<OverviewResponse> {
 
 export function postSync(): Promise<SyncResponse> {
   return postJson<SyncResponse>("/api/sync");
+}
+
+/* ─── /api/transactions ─────────────────────────────────────────── */
+
+export type TransactionsQuery = {
+  readonly range: Range;
+  readonly from?: string;
+  readonly to?: string;
+  readonly q?: string;
+  readonly type?: TransactionTypeFilter;
+  readonly categoryIds?: readonly string[];
+  readonly limit?: number;
+  readonly after?: string;
+};
+
+/**
+ * The transaction list's fetch. Same shape rules as the overview's: empty
+ * `from`/`to` are omitted, `to` never travels without `from`, and the default
+ * filters (todas, no category, no search) never travel at all.
+ */
+export function fetchTransactions(query: TransactionsQuery): Promise<TransactionsResponse> {
+  const search = new URLSearchParams({ range: query.range });
+  if (query.from !== undefined && query.from !== "") {
+    search.set("from", query.from);
+    if (query.to !== undefined && query.to !== "") {
+      search.set("to", query.to);
+    }
+  }
+  if (query.q !== undefined && query.q !== "") {
+    search.set("q", query.q);
+  }
+  if (query.type !== undefined && query.type !== "todas") {
+    search.set("type", query.type);
+  }
+  if (query.categoryIds !== undefined && query.categoryIds.length > 0) {
+    search.set("categoryIds", query.categoryIds.join(","));
+  }
+  if (query.limit !== undefined) {
+    search.set("limit", String(query.limit));
+  }
+  if (query.after !== undefined && query.after !== "") {
+    search.set("after", query.after);
+  }
+  return getJson<TransactionsResponse>(`/api/transactions?${search.toString()}`);
+}
+
+export function fetchCategories(): Promise<CategoriesResponse> {
+  return getJson<CategoriesResponse>("/api/categories");
+}
+
+export function postTransactionCategory(body: { readonly ids: readonly string[]; readonly categoryId: string }): Promise<CategoryWriteResponse> {
+  return postJson<CategoryWriteResponse>("/api/transactions/category", { ids: [...body.ids], categoryId: body.categoryId });
 }

@@ -193,6 +193,65 @@ describe("query", () => {
 });
 
 
+describe("search (q)", () => {
+  const SEARCH_SEED = [
+    tx({ id: "mercado", accountId: "acc-bank", localDate: "2026-05-01", description: "PAG* Mercado Livre LTDA", descriptionNorm: "MERCADO LIVRE" }),
+    tx({ id: "farmacia", accountId: "acc-bank", localDate: "2026-05-02", description: "Farmácia São Paulo", descriptionNorm: "FARMACIA SAO PAULO" }),
+    tx({ id: "counterparty", accountId: "acc-bank", localDate: "2026-05-03", document: "12345678900", counterpartyName: "Escola Saber Ltda" }),
+    tx({ id: "pct", accountId: "acc-bank", localDate: "2026-05-04", description: "100% OK", descriptionNorm: "100% OK" }),
+    tx({ id: "digits", accountId: "acc-bank", localDate: "2026-05-05", description: "1000 OK", descriptionNorm: "1000 OK" }),
+    tx({ id: "other", accountId: "acc-card", localDate: "2026-05-06", description: "UBER TRIP", descriptionNorm: "UBER TRIP", accountType: "CREDIT" }),
+  ];
+
+  function searchStore() {
+    const store = storeFor();
+    store.replaceAccount("acc-bank", "conn-1", SEARCH_SEED.filter((row) => row.accountId === "acc-bank"), null);
+    store.replaceAccount("acc-card", "conn-1", SEARCH_SEED.filter((row) => row.accountId === "acc-card"), null);
+    return store;
+  }
+
+  const SEARCH_CASES: readonly { readonly name: string; readonly q: string; readonly ids: readonly string[] }[] = [
+    { name: "matches the description case-insensitively", q: "mercado", ids: ["mercado"] },
+    { name: "matches the description accent-insensitively through description_norm", q: "farmacia", ids: ["farmacia"] },
+    { name: "matches an accented query against the normalized description", q: "farmácia", ids: ["farmacia"] },
+    { name: "matches the counterparty case-insensitively", q: "ESCOLA saber", ids: ["counterparty"] },
+    { name: "escapes % so it matches literally", q: "100%", ids: ["pct"] },
+    { name: "escapes _ so it matches literally", q: "100_", ids: [] },
+    { name: "finds nothing for a term no field holds", q: "netflix", ids: [] },
+  ];
+
+  for (const { name, q, ids } of SEARCH_CASES) {
+    it(name, () => {
+      assert.deepEqual(idsOf(searchStore().query({ ...WIDE_FILTER, q })), ids);
+    });
+  }
+
+  it("an absent q filters nothing", () => {
+    assert.equal(searchStore().query({ ...WIDE_FILTER }).length, SEARCH_SEED.length);
+  });
+
+  it("a whitespace-only q filters nothing", () => {
+    assert.equal(searchStore().query({ ...WIDE_FILTER, q: "   " }).length, SEARCH_SEED.length);
+  });
+
+  it("combines with the other filters with AND", () => {
+    const store = searchStore();
+    assert.deepEqual(idsOf(store.query({ ...WIDE_FILTER, q: "mercado", categories: ["10000000"] })), []);
+    assert.deepEqual(idsOf(store.query({ ...WIDE_FILTER, q: "mercado", accountIds: ["acc-card"] })), []);
+  });
+
+  it("pages a searched window without repeating or skipping a row", () => {
+    const store = searchStore();
+    const first = store.query({ ...WIDE_FILTER, q: "a", limit: 2 });
+    const last = first.at(-1);
+    assert.ok(last);
+
+    const second = store.query({ ...WIDE_FILTER, q: "a", limit: 2, after: { localDate: last.localDate, id: last.id } });
+
+    assert.equal(new Set([...idsOf(first), ...idsOf(second)]).size, 3);
+  });
+});
+
 describe("byIds", () => {
   it("returns the requested rows and handles an empty request", () => {
     const store = seededStore();

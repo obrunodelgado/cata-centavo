@@ -129,6 +129,7 @@ function buildQuery(filter: TransactionFilter): { readonly sql: string; readonly
     "t.local_date <= ?",
   ];
   const parameters: (string | number)[] = [...filter.accountIds, filter.from, filter.to];
+  addSearchFilter(conditions, parameters, filter.q);
   addAmountFilters(conditions, parameters, filter.minAmountCents, filter.maxAmountCents);
   addAccountFilters(conditions, parameters, filter.accountType, filter.accountSubtype);
   addKeysetFilter(conditions, parameters, filter.after);
@@ -171,6 +172,42 @@ function categoryCondition(categories: readonly CategoryFilterValue[]): { readon
     clauses.push(`${DERIVED_CATEGORY} IS NULL`);
   }
   return { sql: `(${clauses.join(" OR ")})`, parameters: ids };
+}
+
+/**
+ * The search needle, matched three ways: raw description (ASCII-case folded —
+ * digits, acquirer prefixes and instalment markers live only there),
+ * `description_norm` (the accent-insensitive half, normalized at insert), and
+ * the counterparty (ASCII-case only; it has no normalized column). The
+ * wildcards are escaped so a `%` or `_` in the search text is a literal.
+ */
+function addSearchFilter(conditions: string[], parameters: Array<string | number>, q: string | undefined): void {
+  if (q === undefined) {
+    return;
+  }
+  const needle = normalizeQuery(q);
+  if (needle === "") {
+    return;
+  }
+  const pattern = `%${needle.replace(/[\\%_]/gu, "\\$&")}%`;
+  conditions.push(
+    "(UPPER(t.description) LIKE ? ESCAPE '\\' OR t.description_norm LIKE ? ESCAPE '\\' OR UPPER(t.counterparty_name) LIKE ? ESCAPE '\\')",
+  );
+  parameters.push(pattern, pattern, pattern);
+}
+
+/**
+ * The query-side half of the `description_norm` contract (`core/description.ts`):
+ * the same NFD accent-strip and uppercase, none of the merchant stripping — a
+ * search for "2/3" or "PAG*" must still find the raw text.
+ */
+function normalizeQuery(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toUpperCase()
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function addAmountFilters(

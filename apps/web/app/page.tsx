@@ -15,7 +15,16 @@ import { OverviewView } from "../components/views/overview.tsx";
 import { isViewId, TITLES, type ViewId } from "../components/views/registry.ts";
 import { TransactionsView } from "../components/views/transactions.tsx";
 
-const VIEWS_BY_ID: Readonly<Record<Exclude<ViewId, "visao-geral">, () => JSX.Element>> = {
+/** The common props every data view takes from the shell. */
+type ViewProps = {
+  readonly range: Range;
+  readonly periodStart: string;
+  readonly periodEnd: string;
+  /** Bumped after a sync so the view refetches. */
+  readonly refreshKey: number;
+};
+
+const VIEWS_BY_ID: Readonly<Record<Exclude<ViewId, "visao-geral">, (props: ViewProps) => JSX.Element>> = {
   transacoes: TransactionsView,
   analises: AnalysisView,
   orcamentos: BudgetsView,
@@ -144,7 +153,7 @@ export default function Page() {
               onVerTodas={() => navigate("transacoes")}
             />
           ) : (
-            <ActiveView />
+            <ActiveView range={range} periodStart={periodStart} periodEnd={periodEnd} refreshKey={refreshKey} />
           )}
         </main>
       </div>

@@ -35,6 +35,9 @@ const PLUGGY_TOP_LEVEL_IDS = [
 ];
 
 const LABEL_SPOT_CHECKS = [
+  { id: "00000000", en: "Pet", pt: "Pet" },
+  { id: "00000001", en: "Restaurants", pt: "Restaurantes" },
+  { id: "00000002", en: "Study", pt: "Estudo" },
   { id: "01000000", en: "Income", pt: "Renda" },
   { id: "10000000", en: "Groceries", pt: "Supermercado" },
   { id: "11000000", en: "Food and drinks", pt: "Alimentos e bebidas" },
@@ -42,9 +45,17 @@ const LABEL_SPOT_CHECKS = [
   { id: "99999999", en: "Other", pt: "Outros" },
 ];
 
+/**
+ * The categories that are ours, not Pluggy's. The 00 prefix sits outside
+ * Pluggy's allocation — their sequence starts at 01, so their next real
+ * top-level category would plausibly claim 22000000 — and nothing derives
+ * them: they reach a row only through a user override.
+ */
+const LOCAL_IDS = ["00000000", "00000001", "00000002"];
+
 describe("the closed category list", () => {
-  it("holds exactly Pluggy's 22 top-level categories", () => {
-    assert.deepEqual([...CATEGORY_IDS].sort(), [...PLUGGY_TOP_LEVEL_IDS].sort());
+  it("holds exactly Pluggy's 22 top-level categories plus the local additions", () => {
+    assert.deepEqual([...CATEGORY_IDS].sort(), [...PLUGGY_TOP_LEVEL_IDS, ...LOCAL_IDS].sort());
   });
 
   it("names every id exactly once", () => {
