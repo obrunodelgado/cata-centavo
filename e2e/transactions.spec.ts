@@ -118,7 +118,18 @@ test("the detail modal saves a note and the list row shows the hint chip", async
 
   await expect(firstRow.locator(".tx-note")).toHaveCount(1);
   await expect(firstRow.locator(".tx-note")).toHaveAttribute("aria-label", "Tem nota: presente da Marina");
-  await expect(firstRow.locator(".tx-note")).toHaveAttribute("title", "presente da Marina");
+
+  // Hovering the chip shows the styled tooltip with the note text.
+  await firstRow.locator(".tx-note").hover();
+  await expect(page.locator(".note-tip.on")).toBeVisible();
+  await expect(page.locator(".note-tip.on")).toContainText("presente da Marina");
+
+  // Moving away hides it; keyboard focus shows it again.
+  await page.mouse.move(0, 0);
+  await expect(page.locator(".note-tip.on")).toHaveCount(0);
+  await firstRow.locator(".tx-note").focus();
+  await expect(page.locator(".note-tip.on")).toBeVisible();
+  await expect(page.locator(".note-tip.on")).toContainText("presente da Marina");
 
   // Reopening the modal prefills the saved note.
   await firstRow.click();
