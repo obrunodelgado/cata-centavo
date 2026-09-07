@@ -204,9 +204,10 @@ describe("handleOverview against the fixture environment", () => {
 
     assert.deepEqual(body.balances, { cashCents: 6_843_210, investedCents: 0, owedCents: 0 });
 
-    assert.equal(body.recent.length, 7, "all seeded rows, bounded at 10");
+    assert.equal(body.recent.length, 6, "all seeded rows but the oldest, bounded at 6");
     assert.equal(body.recent[0]?.localDate, body.window.to);
-    assert.equal(body.recent[6]?.localDate, iso(shiftDays(new Date(), -91)));
+    assert.equal(body.recent[5]?.localDate, iso(shiftDays(new Date(), -90)));
+    assert.ok(body.recent.every((row) => row.status === "Pago"), "seeded rows are all today or older");
 
     // Sources carry the cache through dates; a stale one is carried, not hidden.
     assert.deepEqual(

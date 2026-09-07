@@ -1,4 +1,4 @@
-import { aggregate, categoryById, collectAccounts, collectInvestments, summarizeInvestments, todayIn, type Account, type InvestmentPosition } from "@cata-centavo/core";
+import { aggregate, categoryById, collectAccounts, collectInvestments, isSelfTransfer, summarizeInvestments, todayIn, type Account, type InvestmentPosition } from "@cata-centavo/core";
 import { z } from "zod";
 
 import {
@@ -118,7 +118,7 @@ async function overviewPayload(source: Extract<WebSource, { readonly ok: true }>
     series: seriesPayload(window, series),
     anchor: anchorSlice(rows, window, today),
     balances: balancesSlice(collected.accounts, investments.positions),
-    recent: recentRows(rows),
+    recent: recentRows(rows, today),
     investments: investmentsSlice(investments.positions),
     budgetsMini: null,
     sources: sourcesSlice(collected.accounts, accountIds, today, source),
@@ -205,17 +205,53 @@ function balancesSlice(accounts: readonly Account[], positions: readonly Investm
   return { cashCents, investedCents, owedCents };
 }
 
-function recentRows(rows: ReturnType<Extract<WebSource, { readonly ok: true }>["reader"]["query"]>): readonly RecentRow[] {
-  return rows.slice(0, 10).map((row) => ({
+/**
+ * The recent list is display-only — it never feeds a total, so a future-dated
+ * instalment may appear here (as `Futuro`) while the anchor slice stays clean.
+ * The status is derived per request from `localDate` against `today`: one row,
+ * one bucket, so a row that matures moves from upcoming to spent without ever
+ * being counted twice.
+ */
+function recentRows(
+  rows: ReturnType<Extract<WebSource, { readonly ok: true }>["reader"]["query"]>,
+  today: string,
+): readonly RecentRow[] {
+  return rows.slice(0, 6).map((row) => ({
     id: row.id,
     localDate: row.localDate,
     description: row.description,
     categoryId: row.category,
     categoryName: categoryName(row.category),
     accountId: row.accountId,
-    paymentMethod: row.paymentMethod,
+    paymentMethod: tipoOf(row),
     amountCents: row.amountCents,
+    status: row.localDate > today ? "Futuro" : "Pago",
+    internal: isSelfTransfer(row),
   }));
+}
+
+/** Pluggy's paymentMethod raw values in pt-BR; unknown values render as themselves. */
+const PAYMENT_METHOD_NAMES: Readonly<Record<string, string>> = {
+  PIX: "PIX",
+  BOLETO: "Boleto",
+  TED: "TED",
+  DEBIT: "Débito",
+  OTHER: "Outro",
+};
+
+/**
+ * Pluggy omits `paymentData` on card rows — most of the recent list — so the
+ * account type fills the gap: a movement on a CREDIT account is a card
+ * movement. Only rows with neither land as an em dash.
+ */
+function tipoOf(row: { readonly paymentMethod: string | null; readonly accountType: Account["type"] }): string {
+  if (row.paymentMethod !== null) {
+    return PAYMENT_METHOD_NAMES[row.paymentMethod] ?? row.paymentMethod;
+  }
+  if (row.accountType === "CREDIT") {
+    return "Cartão";
+  }
+  return "—";
 }
 
 function investmentsSlice(positions: readonly { readonly type: string; readonly balanceCents: number }[]): OverviewInvestments {
