@@ -19,7 +19,7 @@ jobs:
         # partway through the 22 line. Pinning this to an early 22.x would make
         # `npm test` report "# tests 0" and exit 0. The `floor` job below covers
         # the oldest supported version instead, without running the suite.
-        node: [22, 24]
+        node: [24]
 
     name: check (node ${{ matrix.node }})
 

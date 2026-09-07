@@ -53,3 +53,4 @@ test-results/
 playwright-report/
 e2e/.e2e-env.json
 
+gitleaks-report.json
