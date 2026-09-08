@@ -87,6 +87,12 @@ export function json(payload: unknown, status = 200): Response {
 /** The tipo segment: which direction of movement the list shows. */
 export type TransactionTypeFilter = "todas" | "receitas" | "despesas";
 
+/** One stored alocação of a saque: the category's share, in positive cents. */
+export type TransactionAllocationRow = {
+  readonly categoryId: string;
+  readonly amountCents: number;
+};
+
 export type TransactionRow = {
   readonly id: string;
   readonly localDate: string;
@@ -105,6 +111,10 @@ export type TransactionRow = {
   readonly paymentMethod: string;
   /** An internal transfer (ADR-0003): displayed with the "interna" tag, never a receita or a despesa. */
   readonly internal: boolean;
+  /** The cash-movement recognition (ADR-0004): the Tipo chip and the split editor key off it. */
+  readonly recognised: "saque" | "estorno" | null;
+  /** The saque's stored alocações; empty when the saque is not detailed. */
+  readonly allocations: readonly TransactionAllocationRow[];
   readonly amountCents: number;
   /** Derived at request time from `localDate` against today — never stored. */
   readonly status: "Futuro" | "Pago";
@@ -130,6 +140,8 @@ export type TransactionsResponse =
       readonly totalInWindow: number;
       /** Per-category totals for the window, ignoring the category filter. */
       readonly breakdown: readonly BreakdownSlice[];
+      /** Saque money no alocação attributes — the sidebar's note, zero when fully detailed. */
+      readonly unallocatedSaqueCents: number;
       readonly unavailable: readonly FailureRow[];
     }
   | { readonly ok: false; readonly problems: readonly string[] };
@@ -155,6 +167,23 @@ export type NoteWriteResponse = {
   /** Whether the id is still in the cache; a stale id is reported, never written. */
   readonly known: boolean;
 };
+
+/** The saque-mark and split writes answer with the fresh row, ready to patch in place. */
+export type TransactionRowWriteResponse =
+  | { readonly ok: true; readonly transactionId: string; readonly row: TransactionRow }
+  | { readonly ok: false; readonly problems: readonly string[] };
+
+export type DescriptionWriteResponse =
+  | {
+      readonly ok: true;
+      readonly transactionId: string;
+      /** Whether the edited id is still in the cache; a stale id is reported, never written. */
+      readonly known: boolean;
+      /** How many cached rows now carry the name — the toast's number. */
+      readonly updated: number;
+      readonly description: string;
+    }
+  | { readonly ok: false; readonly problems: readonly string[] };
 
 /* ─── /api/overview ─────────────────────────────────────────────── */
 
@@ -209,6 +238,8 @@ export type RecentRow = {
   readonly status: "Futuro" | "Pago";
   /** An internal transfer (ADR-0003): displayed with the "interna" tag, never a total. */
   readonly internal: boolean;
+  /** The cash-movement recognition (ADR-0004): the Tipo chip keys off it here too. */
+  readonly recognised: "saque" | "estorno" | null;
   /** The user's own annotation; absence is `null`, never `''`. */
   readonly note: string | null;
 };

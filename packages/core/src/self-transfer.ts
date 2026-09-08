@@ -21,6 +21,11 @@ import type { DerivedTransaction } from "./transaction.ts";
  * The resolved category is matched too, so a manual correction to either
  * group excludes the row the same way — and an explicit correction wins over
  * the dividend leaf's income default (ADR-0003).
+ *
+ * The cash-movement recognition (ADR-0004) is the one way out: a row recognised
+ * as a saque or an estorno is cash leaving or returning to the tracked
+ * universe, not money moving between the holder's own accounts, so it is
+ * checked before every group and never excluded.
  */
 const SELF_TRANSFER_GROUPS: ReadonlySet<string> = new Set(["04000000", "03000000"]);
 
@@ -33,6 +38,9 @@ const SELF_TRANSFER_LEAVES: ReadonlySet<string> = new Set([
 const DIVIDENDS_LEAF = "03060000";
 
 export function isSelfTransfer(row: DerivedTransaction): boolean {
+  if (row.recognised !== null) {
+    return false;
+  }
   if (row.category !== null && row.categorySrc === "override" && SELF_TRANSFER_GROUPS.has(row.category)) {
     return true;
   }

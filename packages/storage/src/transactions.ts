@@ -172,13 +172,15 @@ function categoryCondition(categories: readonly CategoryFilterValue[]): { readon
 }
 
 /**
- * The search needle, matched four ways: raw description (ASCII-case folded —
+ * The search needle, matched five ways: raw description (ASCII-case folded —
  * digits, acquirer prefixes and instalment markers live only there),
  * `description_norm` (the accent-insensitive half, normalized at insert), the
- * counterparty (ASCII-case only; it has no normalized column), and the user's
- * note through `note_norm` — the note store already wrote it folded and
- * uppercased, so the same escaped needle matches. The wildcards are escaped so
- * a `%` or `_` in the search text is a literal.
+ * counterparty (ASCII-case only; it has no normalized column), the user's note
+ * through `note_norm` — the note store already wrote it folded and uppercased,
+ * so the same escaped needle matches — and the rename's `description_norm` in
+ * `userdata.description_overrides`, so a renamed row is found by the name the
+ * user gave it (Q9). The wildcards are escaped so a `%` or `_` in the search
+ * text is a literal.
  */
 function addSearchFilter(conditions: string[], parameters: Array<string | number>, q: string | undefined): void {
   if (q === undefined) {
@@ -190,9 +192,9 @@ function addSearchFilter(conditions: string[], parameters: Array<string | number
   }
   const pattern = `%${needle.replace(/[\\%_]/gu, "\\$&")}%`;
   conditions.push(
-    "(UPPER(t.description) LIKE ? ESCAPE '\\' OR t.description_norm LIKE ? ESCAPE '\\' OR UPPER(t.counterparty_name) LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM userdata.transaction_notes n WHERE n.transaction_id = t.id AND n.note_norm LIKE ? ESCAPE '\\'))",
+    "(UPPER(t.description) LIKE ? ESCAPE '\\' OR t.description_norm LIKE ? ESCAPE '\\' OR UPPER(t.counterparty_name) LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM userdata.transaction_notes n WHERE n.transaction_id = t.id AND n.note_norm LIKE ? ESCAPE '\\') OR EXISTS (SELECT 1 FROM userdata.description_overrides d WHERE d.transaction_id = t.id AND d.description_norm LIKE ? ESCAPE '\\'))",
   );
-  parameters.push(pattern, pattern, pattern, pattern);
+  parameters.push(pattern, pattern, pattern, pattern, pattern);
 }
 
 function addAmountFilters(

@@ -6,6 +6,7 @@ import {
   centsToBRLShort,
   centsToSignedBRL,
   chartNumber,
+  parseCentsInput,
   percentBRL,
 } from "../../apps/web/lib/money.ts";
 
@@ -56,4 +57,25 @@ describe("lib/money — pt-BR formatting over integer cents", () => {
     assert.equal(chartNumber(-721435), -7214.35);
     assert.equal(chartNumber(0), 0);
   });
+});
+
+describe("parseCentsInput", () => {
+  const CASES: readonly { readonly name: string; readonly text: string; readonly expected: number | null }[] = [
+    { name: "parses a plain integer", text: "300", expected: 30_000 },
+    { name: "parses a comma decimal", text: "1234,56", expected: 123_456 },
+    { name: "strips thousands dots", text: "1.234,56", expected: 123_456 },
+    { name: "accepts one decimal place", text: "1234,5", expected: 123_450 },
+    { name: "accepts a trailing comma", text: "300,", expected: 30_000 },
+    { name: "an empty text is empty", text: "", expected: null },
+    { name: "a whitespace-only text is empty", text: "   ", expected: null },
+    { name: "a third decimal digit is rejected", text: "1,234", expected: null },
+    { name: "letters never parse", text: "12a", expected: null },
+    { name: "a negative never parses — alocações are positive", text: "-300", expected: null },
+  ];
+
+  for (const { name, text, expected } of CASES) {
+    it(name, () => {
+      assert.equal(parseCentsInput(text), expected);
+    });
+  }
 });

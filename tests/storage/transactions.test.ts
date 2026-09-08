@@ -6,6 +6,8 @@ import type { Logger, TransactionFilter } from "@cata-centavo/core";
 
 import { openDatabase } from "@cata-centavo/storage";
 import { CACHE_MIGRATIONS } from "@cata-centavo/storage";
+import { createDescriptionOverrideStore } from "@cata-centavo/storage";
+import { createTransactionSplitStore } from "@cata-centavo/storage";
 import { createTransactionStore } from "@cata-centavo/storage";
 import { fakeLogger } from "../fakes/fake-logger.ts";
 import { derived, tx } from "../fakes/transaction-builder.ts";
@@ -123,6 +125,8 @@ describe("replaceAccount", () => {
       category: "01000000",
       categorySrc: "pluggy",
       note: null,
+      recognised: null,
+      allocations: [],
     });
   });
 
@@ -320,8 +324,7 @@ describe("byIds", () => {
     const store = seededStore();
 
     assert.deepEqual(idsOf(store.byIds(["food", "card"])), ["card", "food"]);
-    assert.deepEqual(store.byIds([]), []);
-  });
+    assert.deepEqual(store.byIds([]), []);  });
 });
 
 describe("cardRows", () => {
@@ -383,5 +386,137 @@ describe("top_category_id write-time roll-up", () => {
     const row = db.prepare("SELECT category_id, top_category_id FROM transactions WHERE id = 'a'").get();
     assert.equal(row?.["category_id"], null);
     assert.equal(row?.["top_category_id"], null);
+  });
+});
+
+describe("saque recognition on reads", () => {
+  function recognisedStore() {
+    const { store, db } = storeAndDbFor();
+    store.replaceAccount("acc-1", "conn-1", [
+      tx({ id: "saque", categoryId: "04010000", amountCents: -50_000 }),
+      tx({ id: "estorno", categoryId: "04010000", amountCents: 26_000 }),
+      tx({ id: "pix", categoryId: "04020000", amountCents: -50_000 }),
+    ], null);
+    return { store, db };
+  }
+
+  it("recognises a negative CASH-leaf row as a saque", () => {
+    const rows = recognisedStore().store.query(filterFor(["acc-1"]));
+
+    assert.equal(rows.find((row) => row.id === "saque")?.recognised, "saque");
+  });
+
+  it("recognises a positive CASH-leaf row as an estorno", () => {
+    const rows = recognisedStore().store.query(filterFor(["acc-1"]));
+
+    assert.equal(rows.find((row) => row.id === "estorno")?.recognised, "estorno");
+  });
+
+  it("leaves an ordinary same-person row unrecognised", () => {
+    const rows = recognisedStore().store.query(filterFor(["acc-1"]));
+
+    assert.equal(rows.find((row) => row.id === "pix")?.recognised, null);
+  });
+
+  it("a stored denial keeps the leaf row unrecognised", () => {
+    const { store, db } = recognisedStore();
+    db.prepare(
+      "INSERT INTO userdata.saque_marks (transaction_id, recognised, created_at, updated_at) VALUES ('saque', 'none', '2026-01-01', '2026-01-01')",
+    ).run();
+
+    const rows = store.query(filterFor(["acc-1"]));
+
+    assert.equal(rows.find((row) => row.id === "saque")?.recognised, null);
+  });
+
+  it("a stored mark outranks the leaf's own verdict", () => {
+    const { store, db } = recognisedStore();
+    db.prepare(
+      "INSERT INTO userdata.saque_marks (transaction_id, recognised, created_at, updated_at) VALUES ('saque', 'estorno', '2026-01-01', '2026-01-01')",
+    ).run();
+
+    const rows = store.query(filterFor(["acc-1"]));
+
+    assert.equal(rows.find((row) => row.id === "saque")?.recognised, "estorno");
+  });
+
+  it("suppresses the derived category of a recognised saque, override aside", () => {
+    const { store, db } = recognisedStore();
+
+    const rows = store.query(filterFor(["acc-1"]));
+    assert.equal(rows.find((row) => row.id === "saque")?.category, null);
+
+    db.prepare(
+      "INSERT INTO userdata.category_overrides (transaction_id, category, created_at) VALUES ('saque', '11000000', '2026-01-01')",
+    ).run();
+    const overridden = store.query(filterFor(["acc-1"]));
+    assert.equal(overridden.find((row) => row.id === "saque")?.category, "11000000");
+  });
+
+  it("the none filter catches a recognised saque and estorno", () => {
+    const rows = recognisedStore().store.query({ ...filterFor(["acc-1"]), categories: ["none"] });
+
+    assert.deepEqual(idsOf(rows), ["saque", "estorno"]);
+  });
+});
+
+describe("allocations on reads", () => {
+  function splitStore() {
+    const { store, db } = storeAndDbFor();
+    store.replaceAccount("acc-1", "conn-1", [tx({ id: "saque", categoryId: "04010000", amountCents: -50_000 })], null);
+    const splits = createTransactionSplitStore(db);
+    splits.set("saque", [
+      { categoryId: "11000000", amountCents: 30_000 },
+      { categoryId: "18000000", amountCents: 15_000 },
+    ]);
+    return { store, db };
+  }
+
+  it("carries the stored alocações on query rows", () => {
+    const rows = splitStore().store.query(filterFor(["acc-1"]));
+
+    assert.deepEqual(rows.find((row) => row.id === "saque")?.allocations, [
+      { categoryId: "11000000", amountCents: 30_000 },
+      { categoryId: "18000000", amountCents: 15_000 },
+    ]);
+  });
+
+  it("carries the alocações on byIds rows too", () => {
+    const rows = splitStore().store.byIds(["saque"]);
+
+    assert.equal(rows[0]?.allocations.length, 2);
+  });
+
+  it("an unsplit saque reads with no alocações", () => {
+    const { store } = storeAndDbFor();
+    store.replaceAccount("acc-1", "conn-1", [tx({ id: "saque", categoryId: "04010000", amountCents: -50_000 })], null);
+
+    assert.deepEqual(store.query(filterFor(["acc-1"]))[0]?.allocations, []);
+  });
+});
+
+describe("description override on reads", () => {
+  function renamedStore() {
+    const { store, db } = storeAndDbFor();
+    store.replaceAccount("acc-1", "conn-1", [
+      tx({ id: "saque", description: "Saque SAQUE DIGITAL CXE 46247373", descriptionNorm: "SAQUE SAQUE DIGITAL CXE 46247373" }),
+      tx({ id: "uber", description: "UBER — ida ao escritório", descriptionNorm: "UBER — IDA AO ESCRITORIO" }),
+    ], null);
+    const renames = createDescriptionOverrideStore(db);
+    renames.set("saque", "Saque para a feira");
+    return store;
+  }
+
+  it("reads the renamed description on the overridden row and the wire text elsewhere", () => {
+    const rows = renamedStore().query(filterFor(["acc-1"]));
+
+    assert.equal(rows.find((row) => row.id === "saque")?.description, "Saque para a feira");
+    assert.equal(rows.find((row) => row.id === "uber")?.description, "UBER — ida ao escritório");
+  });
+
+  it("finds a renamed row by the name the user gave it", () => {
+    const rows = renamedStore().query({ ...filterFor(["acc-1"]), q: "feira" });
+
+    assert.deepEqual(idsOf(rows), ["saque"]);
   });
 });

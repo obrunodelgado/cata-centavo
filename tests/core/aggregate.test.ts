@@ -214,4 +214,85 @@ describe("aggregate", () => {
 
     assert.deepEqual(result.groups.map((group) => group.categoryId), ["09000000", "11000000"]);
   });
+
+  /* ─── saques e estornos (ADR-0004) ──────────────────────────────── */
+
+  it("counts a recognised saque as spending without giving it a category", () => {
+    const result = aggregate([
+      derived({ categoryId: "04010000", recognised: "saque", allocations: [], amountCents: -50_000 }),
+    ], TODAY);
+
+    assert.equal(result.spentCents, 50_000);
+    assert.deepEqual(result.groups.map((group) => group.categoryId), [null]);
+    assert.equal(result.groups[0]?.totalCents, -50_000);
+  });
+
+  it("feeds each allocation to its own category and the sobra to none", () => {
+    const result = aggregate([
+      derived({
+        categoryId: "04010000",
+        recognised: "saque",
+        amountCents: -50_000,
+        allocations: [
+          { categoryId: "11000000", amountCents: 30_000 },
+          { categoryId: "18000000", amountCents: 15_000 },
+        ],
+      }),
+    ], TODAY);
+
+    const byCategory = new Map(result.groups.map((group) => [group.categoryId, group]));
+    assert.equal(byCategory.get("11000000")?.totalCents, -30_000);
+    assert.equal(byCategory.get("18000000")?.totalCents, -15_000);
+    assert.equal(byCategory.get(null)?.totalCents, -5_000);
+    assert.equal(result.spentCents, 50_000);
+  });
+
+  it("a fully allocated saque leaves no sobra group behind", () => {
+    const result = aggregate([
+      derived({
+        categoryId: "04010000",
+        recognised: "saque",
+        amountCents: -50_000,
+        allocations: [{ categoryId: "11000000", amountCents: 50_000 }],
+      }),
+    ], TODAY);
+
+    assert.deepEqual(result.groups.map((group) => group.categoryId), ["11000000"]);
+  });
+
+  it("counts each allocation as its group's row", () => {
+    const result = aggregate([
+      derived({
+        categoryId: "04010000",
+        recognised: "saque",
+        amountCents: -50_000,
+        allocations: [
+          { categoryId: "11000000", amountCents: 30_000 },
+          { categoryId: "11000000", amountCents: 10_000 },
+        ],
+      }),
+    ], TODAY);
+
+    const group = result.groups.find((candidate) => candidate.categoryId === "11000000");
+    assert.equal(group?.count, 2);
+    assert.equal(group?.totalCents, -40_000);
+  });
+
+  it("counts an estorno as income without a category", () => {
+    const result = aggregate([
+      derived({ categoryId: "04010000", recognised: "estorno", allocations: [], amountCents: 26_000 }),
+    ], TODAY);
+
+    assert.equal(result.receivedCents, 26_000);
+    assert.deepEqual(result.groups.map((group) => group.categoryId), [null]);
+    assert.equal(result.groups[0]?.totalCents, 26_000);
+  });
+
+  it("a recognised saque never re-enters the totals through its leaf", () => {
+    const result = aggregate([
+      derived({ categoryId: "04010000", recognised: "saque", allocations: [], amountCents: -50_000 }),
+    ], TODAY);
+
+    assert.ok(!result.groups.some((group) => group.categoryId === "04000000"));
+  });
 });

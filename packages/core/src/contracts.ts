@@ -9,7 +9,8 @@
 import type { Account } from "./account.ts";
 import type { Bill } from "./bill.ts";
 import type { CategoryId } from "./category.ts";
-import type { DerivedTransaction, Transaction } from "./transaction.ts";
+import type { SaqueKind, SaqueMark } from "./saque.ts";
+import type { DerivedTransaction, Transaction, TransactionAllocation } from "./transaction.ts";
 import type { InvestmentPosition } from "./investment.ts";
 
 
@@ -210,5 +211,65 @@ export type TransactionNoteStore = {
     readonly note: string | null;
     /** Whether the id is in the cache; a stale id is reported, never written. */
     readonly known: boolean;
+  };
+};
+
+/**
+ * The saque-mark writes `data.db` accepts (ADR-0004): the user's correction to
+ * the cash-movement recognition, one row per transaction. `"none"` is a stored
+ * denial — it keeps a row the leaf would recognise out of the recognition — so
+ * every mark is an upsert and nothing is ever deleted back into the derivation.
+ * The store owns the sign rule: a saque mark on money coming in, or an estorno
+ * mark on money going out, is refused rather than stored.
+ */
+export type SaqueMarkStore = {
+  set(transactionId: string, recognised: SaqueMark): {
+    readonly transactionId: string;
+    /** Whether the id is in the cache; a stale id is reported, never written. */
+    readonly known: boolean;
+    /** The effective recognition after the write, derivation included. */
+    readonly recognised: SaqueKind | null;
+    /** `"sign"` when the mark contradicts the row's direction; nothing written. */
+    readonly problem: "sign" | null;
+  };
+};
+
+/**
+ * The split writes `data.db` accepts (ADR-0004): one saque's alocações, one row
+ * per category — duplicates arrive merged or are merged here. The store owns
+ * the two money rules: only a recognised saque is splittable, and the
+ * alocações may sum to the saque's value but never past it. An empty array is
+ * the undo — every stored alocação of the saque is removed.
+ */
+export type TransactionSplitStore = {
+  set(transactionId: string, allocations: readonly TransactionAllocation[]): {
+    readonly transactionId: string;
+    /** Whether the id is in the cache; a stale id is reported, never written. */
+    readonly known: boolean;
+    /** The stored split after the write; empty when undone. */
+    readonly allocations: readonly TransactionAllocation[];
+    /** Why nothing was written: the row is not a saque, or the sum overflows it. */
+    readonly problem: "not-saque" | "over" | null;
+  };
+};
+
+/**
+ * The description rename `data.db` accepts: one per-transaction override,
+ * applied in cascade to every cached row whose wire description matches the
+ * edited row's (Q9 — the bulk write). The wire description stays the matching
+ * key, so a rename never drags another rename's family along. The store owns
+ * the trim rule; an empty name is refused, never stored.
+ */
+export type DescriptionOverrideStore = {
+  set(transactionId: string, description: string): {
+    readonly transactionId: string;
+    /** Whether the edited id is in the cache; a stale id is reported, never written. */
+    readonly known: boolean;
+    /** How many cached rows now carry the name — the toast's number. */
+    readonly updated: number;
+    /** The stored name after the write, trimmed. */
+    readonly description: string;
+    /** `"empty"` when the trimmed name is empty; nothing written. */
+    readonly problem: "empty" | null;
   };
 };

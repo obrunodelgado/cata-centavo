@@ -7,12 +7,15 @@ import { join } from "node:path";
 import type { Account, DerivedTransaction, Transaction, TransactionNoteStore, TransactionReader } from "@cata-centavo/core";
 import { createTransactionReader } from "@cata-centavo/core";
 import { toFailure } from "@cata-centavo/pluggy";
-import { createCategoryWriter, createTransactionStore, openDatabases } from "@cata-centavo/storage";
+import { createCategoryWriter, createDescriptionOverrideStore, createSaqueMarkStore, createTransactionSplitStore, createTransactionStore, openDatabases } from "@cata-centavo/storage";
 
-import type { CategoryWriteResponse, NoteWriteResponse, TransactionsResponse } from "../../apps/web/lib/contracts.ts";
+import type { CategoryWriteResponse, DescriptionWriteResponse, NoteWriteResponse, TransactionRowWriteResponse, TransactionsResponse } from "../../apps/web/lib/contracts.ts";
 import { handleTransactions } from "../../apps/web/lib/handlers/transactions.ts";
 import { handleTransactionCategory } from "../../apps/web/lib/handlers/transaction-category.ts";
+import { handleTransactionDescription } from "../../apps/web/lib/handlers/transaction-description.ts";
 import { handleTransactionNote } from "../../apps/web/lib/handlers/transaction-note.ts";
+import { handleTransactionSaque } from "../../apps/web/lib/handlers/transaction-saque.ts";
+import { handleTransactionSplit } from "../../apps/web/lib/handlers/transaction-split.ts";
 import type { WebSource } from "../../apps/web/lib/server/composition.ts";
 import { connection, fakeBank } from "../fakes/fake-bank.ts";
 import { fixedClock } from "../fakes/fixed-clock.ts";
@@ -35,6 +38,18 @@ const ACC_CREDIT = "acc-credit";
 
 const TODAY = "2026-08-30";
 const CLOCK = fixedClock(new Date(`${TODAY}T12:00:00.000Z`));
+
+/** A cash withdrawal as this bank files it: the CASH leaf, money out. */
+const SAQUE = {
+  id: "saque-1",
+  accountId: ACC_CASH,
+  connectionId: CONN_1,
+  localDate: "2026-08-15",
+  amountCents: -50_000,
+  categoryId: "04010000",
+  description: "Saque SAQUE DIGITAL CXE 46247373",
+  descriptionNorm: "SAQUE SAQUE DIGITAL CXE 46247373",
+};
 
 function bankAccount(overrides: Partial<Account>): Account {
   return {
@@ -99,6 +114,9 @@ function fixture(options: { readonly accounts: readonly Account[]; readonly rows
       reader,
       writer,
       noteWriter,
+      saqueMarks: createSaqueMarkStore(databases.db, CLOCK),
+      splits: createTransactionSplitStore(databases.db, CLOCK),
+      descriptionOverrides: createDescriptionOverrideStore(databases.db, CLOCK),
       closingDays: { list: () => [], set: () => {}, delete: () => 0 },
       clock: CLOCK,
       close: () => databases.close(),
@@ -522,6 +540,9 @@ describe("handleTransactions — the note on the wire", () => {
       reader: readerReading(rows),
       writer: { setCategory: () => ({ updated: 0, unknownIds: [] }), setCounterpartyCategory: () => ({ affected: 0 }) },
       noteWriter: { set: () => ({ transactionId: "", note: null, known: false }) },
+      saqueMarks: { set: () => ({ transactionId: "", known: false, recognised: null, problem: null }) },
+      splits: { set: () => ({ transactionId: "", known: false, allocations: [], problem: null }) },
+      descriptionOverrides: { set: () => ({ transactionId: "", known: false, updated: 0, description: "", problem: null }) },
       closingDays: { list: () => [], set: () => {}, delete: () => 0 },
       clock: CLOCK,
       close: () => {},
@@ -545,3 +566,210 @@ function readerReading(rows: readonly DerivedTransaction[]): TransactionReader {
     dataThrough: () => new Map(),
   };
 }
+
+/* ─── saque marks, splits and renames on the wire (ADR-0004) ────── */
+
+function saqueRequest(body: unknown): Request {
+  return new Request("http://localhost/api", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
+}
+
+describe("handleTransactionSaque", () => {
+  it("marks a CASH-leaf row as a saque and answers with the fresh row", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const response = await handleTransactionSaque(fx.source, saqueRequest({ transactionId: "saque-1", recognised: "saque" }));
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as Extract<TransactionRowWriteResponse, { ok: true }>;
+    assert.equal(body.ok, true);
+    assert.equal(body.row.recognised, "saque");
+    assert.equal(body.row.paymentMethod, "Saque");
+    assert.equal(body.row.internal, false, "a recognised saque is never an internal transfer");
+  });
+
+  it("a stored denial returns the row to the internal population", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    await handleTransactionSaque(fx.source, saqueRequest({ transactionId: "saque-1", recognised: "saque" }));
+
+    const response = await handleTransactionSaque(fx.source, saqueRequest({ transactionId: "saque-1", recognised: "none" }));
+    const body = (await response.json()) as Extract<TransactionRowWriteResponse, { ok: true }>;
+
+    assert.equal(body.row?.recognised, null);
+    assert.equal(body.row?.internal, true, "denied, the row is an internal transfer again");
+    assert.equal(body.row?.paymentMethod, "—", "the wire's own payment method is back");
+  });
+
+  it("refuses a mark that contradicts the row's direction", async () => {
+    const fx = seededFixture([tx({ ...SAQUE, amountCents: 26_000 })]);
+    const response = await handleTransactionSaque(fx.source, saqueRequest({ transactionId: "saque-1", recognised: "saque" }));
+
+    assert.equal(response.status, 400);
+    const body = (await response.json()) as { ok: boolean; problems?: readonly string[] };
+    assert.equal(body.ok, false);
+    assert.ok((body.problems ?? []).length > 0);
+  });
+
+  it("answers a stale id with row: null", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const response = await handleTransactionSaque(fx.source, saqueRequest({ transactionId: "ghost", recognised: "saque" }));
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { ok: boolean; row: unknown };
+    assert.equal(body.ok, true);
+    assert.equal(body.row, null);
+  });
+
+  it("rejects an invalid body with readable problems", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const bodies: unknown[] = [
+      { recognised: "saque" },
+      { transactionId: "saque-1", recognised: "pix" },
+      { transactionId: "saque-1" },
+    ];
+    for (const body of bodies) {
+      const response = await handleTransactionSaque(fx.source, saqueRequest(body));
+      assert.equal(response.status, 400, `body=${JSON.stringify(body)}`);
+    }
+  });
+});
+
+describe("handleTransactionSplit", () => {
+  it("stores the split and answers with the fresh row carrying the alocações", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const response = await handleTransactionSplit(fx.source, saqueRequest({
+      transactionId: "saque-1",
+      allocations: [
+        { categoryId: "10000000", amountCents: 30_000 },
+        { categoryId: "18000000", amountCents: 15_000 },
+      ],
+    }));
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as Extract<TransactionRowWriteResponse, { ok: true }>;
+    assert.equal(body.row.allocations.length, 2);
+    assert.equal(body.row.allocations[0]?.categoryId, "10000000");
+  });
+
+  it("refuses a split whose sum overflows the saque", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const response = await handleTransactionSplit(fx.source, saqueRequest({
+      transactionId: "saque-1",
+      allocations: [
+        { categoryId: "10000000", amountCents: 40_000 },
+        { categoryId: "18000000", amountCents: 20_000 },
+      ],
+    }));
+
+    assert.equal(response.status, 400);
+    const body = (await response.json()) as { ok: boolean; problems?: readonly string[] };
+    assert.ok((body.problems ?? []).some((problem) => problem.includes("exceeds")));
+  });
+
+  it("refuses a split on a row that is not a recognised saque", async () => {
+    const fx = seededFixture();
+    const response = await handleTransactionSplit(fx.source, saqueRequest({
+      transactionId: "mercado",
+      allocations: [{ categoryId: "10000000", amountCents: 500 }],
+    }));
+
+    assert.equal(response.status, 400);
+    const body = (await response.json()) as { ok: boolean; problems?: readonly string[] };
+    assert.ok((body.problems ?? []).some((problem) => problem.includes("saque")));
+  });
+
+  it("an empty array undoes the split and the fresh row carries no alocações", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    await handleTransactionSplit(fx.source, saqueRequest({
+      transactionId: "saque-1",
+      allocations: [{ categoryId: "10000000", amountCents: 30_000 }],
+    }));
+
+    const response = await handleTransactionSplit(fx.source, saqueRequest({ transactionId: "saque-1", allocations: [] }));
+    const body = (await response.json()) as Extract<TransactionRowWriteResponse, { ok: true }>;
+
+    assert.deepEqual(body.row.allocations, []);
+  });
+
+  it("rejects an unknown category with readable problems", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const response = await handleTransactionSplit(fx.source, saqueRequest({
+      transactionId: "saque-1",
+      allocations: [{ categoryId: "alimentacao", amountCents: 500 }],
+    }));
+
+    assert.equal(response.status, 400);
+  });
+});
+
+describe("handleTransactionDescription", () => {
+  it("renames the family and answers with the count", async () => {
+    const fx = seededFixture([
+      tx({ ...SAQUE, id: "saque-1" }),
+      tx({ ...SAQUE, id: "saque-2" }),
+    ]);
+    const response = await handleTransactionDescription(fx.source, saqueRequest({ transactionId: "saque-1", description: "  Saque para a feira  " }));
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as Extract<DescriptionWriteResponse, { ok: true }>;
+    assert.equal(body.updated, 2);
+    assert.equal(body.description, "Saque para a feira");
+  });
+
+  it("refuses an empty name", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const response = await handleTransactionDescription(fx.source, saqueRequest({ transactionId: "saque-1", description: "   " }));
+
+    assert.equal(response.status, 400);
+  });
+
+  it("answers a stale id as readable content", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    const response = await handleTransactionDescription(fx.source, saqueRequest({ transactionId: "ghost", description: "sumiu" }));
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { known: boolean; updated: number };
+    assert.equal(body.known, false);
+    assert.equal(body.updated, 0);
+  });
+});
+
+describe("handleTransactions — the saque on the wire", () => {
+  it("carries the recognition and the alocações into the list payload", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    fx.source.saqueMarks.set("saque-1", "saque");
+    fx.source.splits.set("saque-1", [
+      { categoryId: "10000000", amountCents: 30_000 },
+      { categoryId: "18000000", amountCents: 15_000 },
+    ]);
+
+    const body = await payload(fx.source, { from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+    const saque = body.rows.find((row) => row.id === "saque-1");
+    assert.equal(saque?.recognised, "saque");
+    assert.equal(saque?.paymentMethod, "Saque");
+    assert.equal(saque?.internal, false);
+    assert.equal(saque?.allocations.length, 2);
+    assert.equal(body.unallocatedSaqueCents, 5_000);
+  });
+
+  it("an unsplit saque owes its whole value to the sobra", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    fx.source.saqueMarks.set("saque-1", "saque");
+
+    const body = await payload(fx.source, { from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+    assert.equal(body.unallocatedSaqueCents, 50_000);
+  });
+
+  it("a fully allocated saque owes nothing", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    fx.source.saqueMarks.set("saque-1", "saque");
+    fx.source.splits.set("saque-1", [{ categoryId: "10000000", amountCents: 50_000 }]);
+
+    const body = await payload(fx.source, { from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(body.ok, true);
+    if (!body.ok) return;
+    assert.equal(body.unallocatedSaqueCents, 0);
+  });
+});

@@ -12,12 +12,24 @@ const PAYMENT_METHOD_NAMES: Readonly<Record<string, string>> = {
 };
 
 /**
- * The forma de pagamento a row displays: the wire's payment method, else
- * "Cartão" when the movement happened on a credit account (Pluggy omits
- * `paymentData` on card rows), else an em dash. Shared by every handler that
- * ships a transaction row, so the views cannot drift apart on the fallbacks.
+ * The forma de pagamento a row displays: the cash-movement recognition first
+ * (ADR-0004 — the user's vocabulary outranks the wire's silence), then the
+ * wire's payment method, else "Cartão" when the movement happened on a credit
+ * account (Pluggy omits `paymentData` on card rows), else an em dash. Shared by
+ * every handler that ships a transaction row, so the views cannot drift apart
+ * on the fallbacks.
  */
-export function paymentMethodOf(row: { readonly paymentMethod: string | null; readonly accountType: Account["type"] }): string {
+export function paymentMethodOf(row: {
+  readonly paymentMethod: string | null;
+  readonly accountType: Account["type"];
+  readonly recognised: "saque" | "estorno" | null;
+}): string {
+  if (row.recognised === "saque") {
+    return "Saque";
+  }
+  if (row.recognised === "estorno") {
+    return "Estorno";
+  }
   if (row.paymentMethod !== null) {
     return PAYMENT_METHOD_NAMES[row.paymentMethod] ?? row.paymentMethod;
   }
@@ -78,8 +90,15 @@ export function categoryColor(categoryId: string | null): string {
   return CATEGORY_COLOR[categoryId] ?? "var(--c7)";
 }
 
-/** The Tipo cell's tone class: receita in green, PIX in blue, the rest muted. */
-export function paymentMethodClass(row: { readonly amountCents: number; readonly paymentMethod: string }): string {
+/** The Tipo cell's tone class: receita in green, PIX in blue, saque in terracota, the rest muted. */
+export function paymentMethodClass(row: {
+  readonly amountCents: number;
+  readonly paymentMethod: string;
+  readonly recognised: "saque" | "estorno" | null;
+}): string {
+  if (row.recognised === "saque") {
+    return "tx-saq";
+  }
   if (row.amountCents > 0) {
     return "tx-rec";
   }

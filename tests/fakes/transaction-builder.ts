@@ -39,6 +39,8 @@ export function tx(overrides: Partial<Transaction> = {}): Transaction {
  * report it as `pluggy` — so a test that only cares about amounts and dates does
  * not have to name a branch. Pass `category`/`categorySrc` explicitly to stand
  * in for an override, a learned counterparty or a row nothing could categorize.
+ * `recognised` and `allocations` default to unrecognised and empty; a saque test
+ * passes them explicitly (ADR-0004).
  */
 export function derived(overrides: Partial<DerivedTransaction> = {}): DerivedTransaction {
   const row = tx(overrides);
@@ -47,5 +49,5 @@ export function derived(overrides: Partial<DerivedTransaction> = {}): DerivedTra
   if (category !== null) {
     categorySrc = "pluggy";
   }
-  return { ...row, category, categorySrc, note: null, ...overrides };
+  return { ...row, category, categorySrc, note: null, recognised: null, allocations: [], ...overrides };
 }

@@ -283,6 +283,7 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
 .tx-type { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
 .tx-rec { color: var(--pos); background: var(--pos-soft); }
 .tx-pix { color: oklch(50% 0.16 255); background: color-mix(in oklch, var(--c1) 12%, transparent); }
+.tx-saq { color: oklch(52% 0.13 30); background: color-mix(in oklch, var(--c5) 12%, transparent); }
 .tx-bol, .tx-car, .tx-deb { color: var(--muted); background: var(--fg-soft); }
 .val-pos { color: var(--pos); }
 .val-neg { color: var(--fg); }
@@ -333,6 +334,52 @@ select.input { cursor: pointer; }
 .cat-row.on .cat-fill { opacity: 1; }
 .cat-chart.has-filter .cat-row:not(.on) { opacity: .55; }
 .cat-empty { padding: 26px 10px; color: var(--muted); font-size: 13px; text-align: center; }
+.cat-note { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); line-height: 1.55; }
+.cat-note .num { color: var(--fg); }
+
+/* ─── editor de divisão do saque (ADR-0004) ─────────────────────── */
+.split-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; margin-top: 16px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.split-summary .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.split-summary .amt { font-family: var(--font-mono); font-size: 20px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.split-summary .amt.pos { color: var(--pos); }
+
+.split-progress { margin-top: 14px; }
+.split-progress .progress-bar.full { background: var(--pos); }
+.split-progress .progress-bar.over { background: var(--neg); }
+.split-progress-caption { display: flex; justify-content: space-between; gap: 10px; margin-top: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.split-progress-caption b { color: var(--fg); font-weight: 600; }
+.split-progress-caption .restante { color: var(--accent); }
+.split-progress-caption .restante.zerado { color: var(--pos); }
+.split-progress-caption .restante.estouro { color: var(--neg); }
+
+.alloc-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.alloc-list-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.alloc-row { display: grid; grid-template-columns: 1fr 128px 32px; gap: 8px; align-items: center; }
+.alloc-row select.input, .alloc-row .input { padding: 8px 10px; font-size: 13px; }
+.alloc-row .input.val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.alloc-del { width: 32px; height: 36px; display: grid; place-items: center; border: 1px solid transparent; border-radius: var(--radius); background: transparent; color: var(--muted); transition: background .12s ease, color .12s ease; }
+.alloc-del:hover { background: var(--neg-soft); color: var(--neg); }
+.alloc-del svg { width: 14px; height: 14px; }
+.alloc-add { margin-top: 10px; }
+.alloc-empty { padding: 14px; border: 1px dashed var(--border); border-radius: var(--radius); font-size: 12.5px; color: var(--muted); text-align: center; }
+
+.split-hint { display: flex; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: var(--radius); font-size: 12px; line-height: 1.5; }
+.split-hint svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.split-hint.info { background: var(--accent-soft); color: var(--fg); }
+.split-hint.info svg { color: var(--accent); }
+.split-hint.error { background: var(--neg-soft); color: var(--neg); font-weight: 550; }
+
+.rename-note { font-family: var(--font-mono); font-size: 11px; color: var(--muted); line-height: 1.5; }
+.rename-note b { color: var(--fg); font-weight: 600; }
+
+.tx-alloc { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 920px) {
+  .alloc-row { grid-template-columns: 1fr 110px 32px; }
+}
 
 /* ─── insights / listas internas ────────────────────────────────── */
 .insight { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); }

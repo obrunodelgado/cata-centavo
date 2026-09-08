@@ -22,13 +22,22 @@ describe("CACHE_MIGRATIONS", () => {
 });
 
 describe("DATA_MIGRATIONS", () => {
-  it("creates the five tables the derivation and the user's writes read", () => {
+  it("creates the eight tables the derivation and the user's writes read", () => {
     const db = openDatabase({ path: ":memory:", migrations: DATA_MIGRATIONS, policy: "migrate" });
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
       .all()
       .map((r) => String(r["name"]));
-    assert.deepEqual(tables, ["card_closing_day", "category_overrides", "category_snapshot", "counterparty_categories", "transaction_notes"]);
+    assert.deepEqual(tables, [
+      "card_closing_day",
+      "category_overrides",
+      "category_snapshot",
+      "counterparty_categories",
+      "description_overrides",
+      "saque_marks",
+      "transaction_allocations",
+      "transaction_notes",
+    ]);
     db.close();
   });
 });

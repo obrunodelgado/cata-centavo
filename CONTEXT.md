@@ -25,7 +25,7 @@ Derived at read time, never stored: **Futuro** while the row's `localDate` is af
 _Avoid_: Pendente (the prototype's status for unpaid boletos — the cache never holds one)
 
 **Forma de pagamento**:
-How a movement happened, as the bank reported it — PIX, Boleto, TED, Débito — plus **Cartão** for any movement on a credit account and "—" when nothing is known. What the prototype's "Tipo" column shows; not to be confused with the receita/despesa filter.
+How a movement happened, as the bank reported it — PIX, Boleto, TED, Débito — plus **Cartão** for any movement on a credit account, **Saque** and **Estorno** when the row is recognised as one (the recognition outranks the wire's silence), and "—" when nothing is known. What the prototype's "Tipo" column shows; not to be confused with the receita/despesa filter.
 _Avoid_: tipo, tipo de transação
 
 **Nota**:
@@ -35,3 +35,19 @@ _Avoid_: comentário, observação, descrição (that is the bank-reported descr
 **Documento do titular**:
 The holder's own CPF or CNPJ, used to recognise an internal transfer when the counterparty is the holder themself.
 _Avoid_: documento pessoal
+
+**Saque**:
+A despesa that is a cash withdrawal — dinheiro vivo. The wire reports no withdrawal marker: this bank files withdrawals under the same-person CASH leaf, inside the internal-transfer exclusion, and that leaf is where the saque is recognised — by derivation, with the user's correction winning in both directions. The recognition pulls the row out of the exclusion: it becomes a despesa and enters the totals. An unsplit saque has no category — in the totals it sits in "Sem categoria" until its alocações attribute it.
+_Avoid_: tipo de transação saque, retirada
+
+**Estorno**:
+The return of saque money to the account — the bank reports it on the same CASH leaf as the saque, sign positive. Its own type, counted as an entrada (receita): the saque is the saída, the estorno is the entry that undoes it. Like the saque it carries no category of its own, and it never shrinks the saque's alocações — the compensation happens in the totals, not in the division.
+_Avoid_: devolução, reversão; Pix devolvido (the internal transfer's own return, not an estorno)
+
+**Alocação**:
+A share of a saque that the user assigns to one category. A saque's alocações sum to at most the saque's value; whatever they do not cover is the sobra não alocada. In category totals a split saque contributes through its alocações, never through the row's own category.
+_Avoid_: split, rateio; divisão (the divisão is the whole set of a saque's alocações, not one of them)
+
+**Sobra não alocada**:
+The part of a saque that no alocação covers — including the whole value of a saque not yet detailed. It has no category: in the totals it sits in "Sem categoria", with the sidebar note telling how much of that slice is saque money. Informational by design — it never blocks saving and is never an error. It is still money out — it counts in despesas.
+_Avoid_: restante, resto, pendente

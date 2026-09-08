@@ -1,4 +1,4 @@
-import type { AccountsResponse, CategoriesResponse, CategoryWriteResponse, NoteWriteResponse, OverviewResponse, SourcesResponse, SyncResponse, TransactionsResponse, TransactionTypeFilter } from "./contracts.ts";
+import type { AccountsResponse, CategoriesResponse, CategoryWriteResponse, DescriptionWriteResponse, NoteWriteResponse, OverviewResponse, SourcesResponse, SyncResponse, TransactionAllocationRow, TransactionRowWriteResponse, TransactionsResponse, TransactionTypeFilter } from "./contracts.ts";
 import type { Range } from "./series.ts";
 
 /**
@@ -139,4 +139,16 @@ export function postTransactionCategory(body: { readonly ids: readonly string[];
 
 export function postTransactionNote(transactionId: string, note: string): Promise<NoteWriteResponse> {
   return postJson<NoteWriteResponse>("/api/transactions/note", { transactionId, note });
+}
+
+export function postTransactionSaque(transactionId: string, recognised: "saque" | "estorno" | "none"): Promise<TransactionRowWriteResponse> {
+  return postJson<TransactionRowWriteResponse>("/api/transactions/saque", { transactionId, recognised });
+}
+
+export function postTransactionSplit(transactionId: string, allocations: readonly TransactionAllocationRow[]): Promise<TransactionRowWriteResponse> {
+  return postJson<TransactionRowWriteResponse>("/api/transactions/split", { transactionId, allocations: [...allocations] });
+}
+
+export function postTransactionDescription(transactionId: string, description: string): Promise<DescriptionWriteResponse> {
+  return postJson<DescriptionWriteResponse>("/api/transactions/description", { transactionId, description });
 }

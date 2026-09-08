@@ -18,11 +18,17 @@ export type Aggregate = {
   readonly upcoming: { readonly totalCents: number; readonly count: number };
 };
 
+/** One contribution to a group: the row (or alocação) behind it, for the sample. */
+type GroupEntry = {
+  readonly id: string;
+  readonly amountCents: number;
+};
+
 type GroupState = {
   readonly categoryId: CategoryId | null;
   totalCents: number;
   count: number;
-  rows: DerivedTransaction[];
+  entries: GroupEntry[];
 };
 
 /**
@@ -38,13 +44,19 @@ type GroupState = {
  * Internal transfers (`isSelfTransfer`, ADR-0003) never reach the groups
  * either, so the category breakdown and the period totals can never disagree:
  * a row excluded from `spentCents` does not show up in the donut.
+ *
+ * A recognised saque (ADR-0004) is spending without a category of its own: an
+ * unsplit one groups whole under `null`, a split one contributes each alocação
+ * to its category and the sobra não alocada to `null`. The estorno is income
+ * under `null`. The period totals are untouched by the split — the alocações
+ * only redistribute which category the money names.
  */
 export function aggregate(rows: readonly DerivedTransaction[], today: string): Aggregate {
   const groups = new Map<CategoryId | null, GroupState>();
   const totals = { spentCents: 0, receivedCents: 0, upcomingCents: 0, upcomingCount: 0 };
 
   for (const row of rows) {
-    addToGroup(groups, row);
+    addToGroups(groups, row);
     addToTotals(totals, row, today);
   }
 
@@ -56,19 +68,38 @@ export function aggregate(rows: readonly DerivedTransaction[], today: string): A
   };
 }
 
-function addToGroup(groups: Map<CategoryId | null, GroupState>, row: DerivedTransaction): void {
+function addToGroups(groups: Map<CategoryId | null, GroupState>, row: DerivedTransaction): void {
   if (isSelfTransfer(row)) {
     return;
   }
-  const categoryId = row.category;
+  if (row.recognised === "saque") {
+    let allocated = 0;
+    for (const allocation of row.allocations) {
+      allocated += allocation.amountCents;
+      addEntry(groups, allocation.categoryId, { id: row.id, amountCents: -allocation.amountCents });
+    }
+    const leftover = -row.amountCents - allocated;
+    if (leftover > 0) {
+      addEntry(groups, null, { id: row.id, amountCents: -leftover });
+    }
+    return;
+  }
+  if (row.recognised === "estorno") {
+    addEntry(groups, null, { id: row.id, amountCents: row.amountCents });
+    return;
+  }
+  addEntry(groups, row.category, { id: row.id, amountCents: row.amountCents });
+}
+
+function addEntry(groups: Map<CategoryId | null, GroupState>, categoryId: CategoryId | null, entry: GroupEntry): void {
   let group = groups.get(categoryId);
   if (group === undefined) {
-    group = { categoryId, totalCents: 0, count: 0, rows: [] };
+    group = { categoryId, totalCents: 0, count: 0, entries: [] };
     groups.set(categoryId, group);
   }
-  group.totalCents += row.amountCents;
+  group.totalCents += entry.amountCents;
   group.count += 1;
-  group.rows.push(row);
+  group.entries.push(entry);
 }
 
 type Totals = {
@@ -97,16 +128,16 @@ function addToTotals(totals: Totals, row: DerivedTransaction, today: string): vo
 }
 
 function toCategoryGroup(group: GroupState): CategoryGroup {
-  const sampleRows = [...group.rows].sort(compareSampleRows).slice(0, 10);
+  const sampleEntries = [...group.entries].sort(compareSampleEntries).slice(0, 10);
   return {
     categoryId: group.categoryId,
     totalCents: group.totalCents,
     count: group.count,
-    sampleIds: sampleRows.map((row) => row.id),
+    sampleIds: sampleEntries.map((entry) => entry.id),
   };
 }
 
-function compareSampleRows(left: DerivedTransaction, right: DerivedTransaction): number {
+function compareSampleEntries(left: GroupEntry, right: GroupEntry): number {
   const amountDifference = Math.abs(right.amountCents) - Math.abs(left.amountCents);
   if (amountDifference !== 0) {
     return amountDifference;

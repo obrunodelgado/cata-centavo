@@ -1,6 +1,6 @@
 import type { Logger } from "@cata-centavo/core";
 import { resolveCategory } from "@cata-centavo/core";
-import type { DerivedTransaction, Transaction } from "@cata-centavo/core";
+import type { CategoryId, DerivedTransaction, Transaction } from "@cata-centavo/core";
 import { topCategoryFor } from "./harvest.ts";
 
 /**
@@ -40,19 +40,63 @@ export function rowToTransaction(row: Record<string, unknown>): Transaction {
 }
 
 export function rowToDerived(row: Record<string, unknown>): DerivedTransaction {
+  const wireDescription = String(row["description"]);
+  const override = nullableString(row["c_description"]);
   return {
     ...rowToTransaction(row),
+    description: override ?? wireDescription,
     categoryId: nullableString(row["c_leaf"]),
     note: nullableString(row["note"]),
-    ...resolveCategory({
-      override: nullableString(row["c_override"]),
-      counterparty: nullableString(row["c_counterparty"]),
-      pluggy: nullableString(row["c_pluggy"]),
-      snapshot: nullableString(row["c_snapshot"]),
-      learned: nullableString(row["c_learned"]),
-      mcc: nullableString(row["c_mcc"]),
-    }),
+    recognised: saqueKind(row["c_recognised"]),
+    allocations: allocations(row["c_allocations"]),
+    ...resolveCategory(
+      {
+        override: nullableString(row["c_override"]),
+        counterparty: nullableString(row["c_counterparty"]),
+        pluggy: nullableString(row["c_pluggy"]),
+        snapshot: nullableString(row["c_snapshot"]),
+        learned: nullableString(row["c_learned"]),
+        mcc: nullableString(row["c_mcc"]),
+      },
+      saqueKind(row["c_recognised"]),
+    ),
   };
+}
+
+/** The recognition column's two values; anything else is "not recognised". */
+function saqueKind(value: unknown): "saque" | "estorno" | null {
+  if (value === "saque" || value === "estorno") {
+    return value;
+  }
+  return null;
+}
+
+/** The alocações column rides as a JSON array; absent or malformed is empty. */
+function allocations(value: unknown): readonly { categoryId: CategoryId; amountCents: number }[] {
+  if (value === null || value === undefined || typeof value !== "string") {
+    return [];
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  const rows: { categoryId: CategoryId; amountCents: number }[] = [];
+  for (const entry of parsed) {
+    if (typeof entry === "object" && entry !== null) {
+      const record = entry as Record<string, unknown>;
+      const categoryId = record["categoryId"];
+      const amountCents = record["amountCents"];
+      if (typeof categoryId === "string" && typeof amountCents === "number") {
+        rows.push({ categoryId: categoryId as CategoryId, amountCents });
+      }
+    }
+  }
+  return rows;
 }
 
 export function transactionValues(row: Transaction, log: Logger): readonly (string | number | null)[] {

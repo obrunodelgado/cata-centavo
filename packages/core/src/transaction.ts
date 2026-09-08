@@ -1,5 +1,7 @@
 import type { AccountType } from "./account.ts";
+import type { CategoryId } from "./category.ts";
 import type { ResolvedCategory } from "./category-source.ts";
+import type { SaqueKind } from "./saque.ts";
 
 
 /**
@@ -56,10 +58,25 @@ export type Transaction = {
 };
 
 /**
- * A cached transaction plus the category the derivation resolved for it, and
- * the user's own annotation. The note is user-authored data: it lives in
- * `data.db`, survives cache rebuilds, and absence is `null`, never `''`.
+ * One user-assigned share of a saque: a closed-list category and a positive
+ * amount in cents. The alocações of one saque sum to at most the saque's value;
+ * whatever they do not cover is the sobra não alocada (CONTEXT.md).
+ */
+export type TransactionAllocation = {
+  readonly categoryId: CategoryId;
+  readonly amountCents: number;
+};
+
+/**
+ * A cached transaction plus the category the derivation resolved for it, the
+ * user's own annotation, and the cash-movement recognition (ADR-0004). The note,
+ * the mark and the split are user-authored data: they live in `data.db`, survive
+ * cache rebuilds, and absence is `null` / the empty array, never `''`.
  */
 export type DerivedTransaction = Transaction & ResolvedCategory & {
   readonly note: string | null;
+  /** The cash-movement recognition (ADR-0004) — `null` when the row is neither. */
+  readonly recognised: SaqueKind | null;
+  /** The saque's stored alocações; empty when the saque is not detailed. */
+  readonly allocations: readonly TransactionAllocation[];
 };

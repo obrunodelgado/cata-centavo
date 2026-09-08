@@ -1,9 +1,9 @@
 import { homedir } from "node:os";
 
-import type { Bank, BankFailure, CategoryWriter, Clock, ClosingDayStore, TransactionNoteStore, TransactionReader } from "@cata-centavo/core";
+import type { Bank, BankFailure, CategoryWriter, Clock, ClosingDayStore, DescriptionOverrideStore, SaqueMarkStore, TransactionNoteStore, TransactionReader, TransactionSplitStore } from "@cata-centavo/core";
 import { createTransactionReader } from "@cata-centavo/core";
 import { createPluggyClient, toFailure } from "@cata-centavo/pluggy";
-import { createCategoryWriter, createClosingDayStore, createTransactionNoteStore, createTransactionStore, openDatabases } from "@cata-centavo/storage";
+import { createCategoryWriter, createClosingDayStore, createDescriptionOverrideStore, createSaqueMarkStore, createTransactionNoteStore, createTransactionSplitStore, createTransactionStore, openDatabases } from "@cata-centavo/storage";
 
 import { loadConfig, resolvePaths, type Env } from "./config.ts";
 import { createLogger } from "./logging.ts";
@@ -27,6 +27,9 @@ export type WebSource =
       readonly reader: TransactionReader;
       readonly writer: CategoryWriter;
       readonly noteWriter: TransactionNoteStore;
+      readonly saqueMarks: SaqueMarkStore;
+      readonly splits: TransactionSplitStore;
+      readonly descriptionOverrides: DescriptionOverrideStore;
       readonly closingDays: ClosingDayStore;
       /** "Today" for window semantics and freshness rules; injectable for tests. */
       readonly clock: Clock;
@@ -81,6 +84,9 @@ export function createSource(env: Env): WebSource {
     });
     const writer = createCategoryWriter(databases.db, systemClock);
     const noteWriter = createTransactionNoteStore(databases.db, systemClock);
+    const saqueMarks = createSaqueMarkStore(databases.db, systemClock);
+    const splits = createTransactionSplitStore(databases.db, systemClock);
+    const descriptionOverrides = createDescriptionOverrideStore(databases.db, systemClock);
     const closingDays = createClosingDayStore(databases.db, systemClock);
 
     return {
@@ -91,6 +97,9 @@ export function createSource(env: Env): WebSource {
       reader,
       writer,
       noteWriter,
+      saqueMarks,
+      splits,
+      descriptionOverrides,
       closingDays,
       clock: systemClock,
       close: () => databases.close(),

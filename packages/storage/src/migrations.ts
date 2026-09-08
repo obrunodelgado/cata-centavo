@@ -141,4 +141,32 @@ export const DATA_MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    to: 4,
+    up: `
+      CREATE TABLE saque_marks (
+        transaction_id TEXT PRIMARY KEY,
+        recognised TEXT NOT NULL CHECK (recognised IN ('saque', 'estorno', 'none')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE transaction_allocations (
+        transaction_id TEXT NOT NULL,
+        category TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (transaction_id, category)
+      );
+
+      CREATE TABLE description_overrides (
+        transaction_id TEXT PRIMARY KEY,
+        description TEXT NOT NULL,
+        description_norm TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

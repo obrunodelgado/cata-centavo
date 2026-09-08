@@ -19,6 +19,7 @@ export * from "./instalment-reversals.ts";
 export * from "./investment.ts";
 export * from "./investments.ts";
 export * from "./mcc.ts";
+export * from "./saque.ts";
 export * from "./self-transfer.ts";
 export * from "./taxonomy.ts";
 export * from "./taxonomy-tree.ts";

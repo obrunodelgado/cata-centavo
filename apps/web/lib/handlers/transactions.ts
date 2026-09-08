@@ -127,9 +127,30 @@ export async function handleTransactions(source: WebSource, params: URLSearchPar
     nextAfter: hasMore && page.length > 0 ? encodeCursor(page[page.length - 1]!) : null,
     totalInWindow: visible.length,
     breakdown: breakdownOf(typed, today, parsed.data.type),
+    unallocatedSaqueCents: unallocatedSaqueCentsOf(typed),
     unavailable: collected.unavailable.map(unavailableRow),
   };
   return json(response);
+}
+
+/**
+ * The saque money no alocação attributes — the sidebar note's number. A split
+ * saque contributes only its sobra; an unsplit one contributes whole. The
+ * estorno never owes an allocation, so it never appears here.
+ */
+export function unallocatedSaqueCentsOf(rows: readonly DerivedTransaction[]): number {
+  let total = 0;
+  for (const row of rows) {
+    if (row.recognised !== "saque") {
+      continue;
+    }
+    const allocated = row.allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+    const leftover = -row.amountCents - allocated;
+    if (leftover > 0) {
+      total += leftover;
+    }
+  }
+  return total;
 }
 
 /** A query parameter, absent when missing — `URLSearchParams.get` returns null. */
@@ -194,7 +215,8 @@ export function breakdownOf(rows: readonly DerivedTransaction[], today: string, 
     }));
 }
 
-function transactionRow(row: DerivedTransaction, accountNames: ReadonlyMap<string, string>, today: string): TransactionRow {
+/** The wire shape of one row, shared by the list and by the write handlers' fresh-row answers. */
+export function transactionRow(row: DerivedTransaction, accountNames: ReadonlyMap<string, string>, today: string): TransactionRow {
   return {
     id: row.id,
     localDate: row.localDate,
@@ -208,6 +230,8 @@ function transactionRow(row: DerivedTransaction, accountNames: ReadonlyMap<strin
     accountName: accountNames.get(row.accountId) ?? row.accountId,
     paymentMethod: paymentMethodOf(row),
     internal: isSelfTransfer(row),
+    recognised: row.recognised,
+    allocations: row.allocations,
     amountCents: row.amountCents,
     status: row.localDate > today ? "Futuro" : "Pago",
   };

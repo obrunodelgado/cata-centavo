@@ -66,3 +66,19 @@ export function centsToBRLShort(cents: number): string {
 export function chartNumber(cents: number): number {
   return cents / 100;
 }
+
+/**
+ * pt-BR input → integer cents, by string arithmetic — no money ever passes
+ * through a float. Dots are thousands separators and are stripped; the comma is
+ * the decimal separator. `"1.234,56"` → 123456; `"1234,5"` → 123450; `""` and
+ * anything without a digit are `null`, which the editor reads as "empty line".
+ */
+export function parseCentsInput(text: string): number | null {
+  const cleaned = text.replace(/\./gu, "").replace(",", ".").trim();
+  if (!/^\d+(?:\.\d{0,2})?$/u.test(cleaned)) {
+    return null;
+  }
+  const [whole, fraction = ""] = cleaned.split(".");
+  const cents = Number(whole) * 100 + Number((fraction + "00").slice(0, 2));
+  return Number.isSafeInteger(cents) ? cents : null;
+}
