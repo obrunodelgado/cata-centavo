@@ -40,7 +40,7 @@ export function Modal({ title, sub, open, onClose, children }: ModalProps) {
   return (
     <div className="modal-backdrop open" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="modal" ref={modalRef} tabIndex={-1}>
-        <div className="card-head" style={{ marginBottom: "10px" }}>
+        <div className="modal-head" style={{ marginBottom: "10px" }}>
           <div>
             <h2 id="modalTitle">{title}</h2>
             {sub !== undefined ? <p className="modal-sub">{sub}</p> : null}

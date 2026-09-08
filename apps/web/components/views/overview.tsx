@@ -5,7 +5,7 @@ import { useState } from "react";
 import { fetchOverview } from "../../lib/api.ts";
 import type { CategorySlice, OverviewResponse, OverviewSource, RecentRow } from "../../lib/contracts.ts";
 import { dayMonthShort } from "../../lib/datetime.ts";
-import { categoryColor, paymentMethodClass } from "../../lib/labels.ts";
+import { categoryColor, paymentMethodClass, transactionModalSub } from "../../lib/labels.ts";
 import { DEMO_BUDGETS, DEMO_GOALS, DEMO_INSIGHTS } from "../../lib/demo-data.ts";
 import { centsToBRL, centsToBRLShort, centsToSignedBRL, percentBRL } from "../../lib/money.ts";
 import type { Range } from "../../lib/series.ts";
@@ -19,6 +19,7 @@ import { Modal } from "../ui/modal.tsx";
 import { Pill } from "../ui/pill.tsx";
 import { DataTable, type TableColumn } from "../ui/table.tsx";
 import { UnavailableNotice } from "../ui/unavailable-notice.tsx";
+import { ValueBox } from "../ui/value-box.tsx";
 
 /**
  * Visão geral — the prototype's layout fed by `/api/overview`. Every number a
@@ -441,26 +442,19 @@ const RECENT_COLUMNS: readonly TableColumn<RecentRow>[] = [
   },
 ];
 
-/** Read-only detail: the model's modal minus the editable fields that ticket 07 owns. */
+/** Read-only detail: the design's modal shell minus the editable fields that ticket 07 owns. */
 function RecentDetailModal({ row, onClose }: { readonly row: RecentRow | null; readonly onClose: () => void }) {
   if (row === null) {
     return null;
   }
-  const positive = row.amountCents > 0;
   return (
     <Modal
-      title={row.description}
-      sub={`${dayMonthShort(row.localDate)} · ${row.categoryName ?? "Sem categoria"} · ${row.paymentMethod}`}
+      title="Detalhes da Transação"
+      sub={transactionModalSub(row)}
       open
       onClose={onClose}
     >
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
-        <span className="meta">Valor</span>
-        <span className={`num ${positive ? "val-pos" : "val-neg"}`} style={{ fontSize: 22, fontWeight: 650 }}>
-          {positive ? "+" : ""}
-          {centsToBRL(row.amountCents)}
-        </span>
-      </div>
+      <ValueBox amountCents={row.amountCents} recognised={row.recognised} />
       <div className="modal-actions">
         <Button variant="secondary" onClick={onClose}>
           Fechar

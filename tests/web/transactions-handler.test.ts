@@ -453,6 +453,46 @@ describe("handleTransactions — the breakdown sidebar", () => {
       "Sem categoria is a slice like any other",
     );
   });
+
+  it("keeps the sidebar direction-pure: with 'todas', a slice counts the category's expenses, not its net", async () => {
+    const fx = seededFixture([
+      row({ id: "pix-ida", localDate: "2026-08-04", amountCents: -32_000, description: "Pix enviado Isabella", categoryId: "05000000" }),
+      row({ id: "pix-volta", localDate: "2026-08-05", amountCents: +20_000, description: "Pix recebido Isabella", categoryId: "05000000" }),
+      row({ id: "mercado", localDate: "2026-08-10", amountCents: -45_900, description: "Supermercado", categoryId: "10000000" }),
+      row({ id: "salario", localDate: "2026-08-06", amountCents: +500_000, description: "Salário mensal", categoryId: "01000000" }),
+    ]);
+
+    const todas = await payload(fx.source, { from: "2026-08-01", to: "2026-08-31" });
+    assert.equal(todas.ok, true);
+    if (!todas.ok) return;
+    const transferencias = todas.breakdown.find((slice) => slice.categoryId === "05000000");
+    assert.equal(
+      transferencias?.totalCents,
+      32_000,
+      "the slice counts the category's expenses, not the net against its own receitas",
+    );
+    assert.ok(
+      !todas.breakdown.some((slice) => slice.categoryId === "01000000"),
+      "a receita-only category never shows under a 'Despesas' title",
+    );
+    const total = todas.breakdown.reduce((sum, slice) => sum + slice.totalCents, 0);
+    assert.equal(total, 77_900, "the sidebar total is the period's despesas — the number the overview's KPI shows");
+
+    const despesas = await payload(fx.source, { type: "despesas", from: "2026-08-01", to: "2026-08-31" });
+    assert.equal(despesas.ok, true);
+    if (!despesas.ok) return;
+    assert.deepEqual(
+      despesas.breakdown.map((slice) => [slice.categoryId, slice.totalCents]),
+      todas.breakdown.map((slice) => [slice.categoryId, slice.totalCents]),
+      "'todas' and 'despesas' promise the same sidebar",
+    );
+
+    const receitas = await payload(fx.source, { type: "receitas", from: "2026-08-01", to: "2026-08-31" });
+    assert.equal(receitas.ok, true);
+    if (!receitas.ok) return;
+    const receitaTransferencias = receitas.breakdown.find((slice) => slice.categoryId === "05000000");
+    assert.equal(receitaTransferencias?.totalCents, 20_000, "the receita side counts the category's receitas whole");
+  });
 });
 
 describe("handleTransactionCategory — the write boundary", () => {

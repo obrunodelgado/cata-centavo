@@ -14,7 +14,7 @@ import {
 } from "../../lib/api.ts";
 import type { BreakdownSlice, CategoryOption, TransactionRow, TransactionsResponse, TransactionTypeFilter } from "../../lib/contracts.ts";
 import { dayMonthShort } from "../../lib/datetime.ts";
-import { categoryColor, categoryLegend, categoryName, paymentMethodClass } from "../../lib/labels.ts";
+import { categoryColor, categoryLegend, categoryName, filteredAmountCents, paymentMethodClass, transactionModalSub } from "../../lib/labels.ts";
 import { centsToBRL, parseCentsInput, percentBRL } from "../../lib/money.ts";
 import type { Range } from "../../lib/series.ts";
 import { useApi } from "../../lib/use-api.ts";
@@ -25,6 +25,7 @@ import { NoteChip } from "../ui/note-chip.tsx";
 import { Seg } from "../ui/seg.tsx";
 import { DataTable, type TableColumn } from "../ui/table.tsx";
 import { UnavailableNotice } from "../ui/unavailable-notice.tsx";
+import { ValueBox } from "../ui/value-box.tsx";
 
 /**
  * Transações — the prototype's searchable, filterable list fed by
@@ -95,6 +96,10 @@ export function TransactionsView({ range, periodStart, periodEnd, refreshKey }: 
   }, []);
 
   const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE);
+  // The active category filter, as the portion rule reads it: empty when the
+  // list is unfiltered, else the one value — a category id or "none".
+  const categoryFilter = useMemo(() => (categoryId === null ? [] : [categoryId]), [categoryId]);
+  const columns = useMemo(() => transactionColumns(categoryFilter), [categoryFilter]);
   const request = useMemo<TransactionsQuery>(
     () => ({
       range,
@@ -375,7 +380,7 @@ export function TransactionsView({ range, periodStart, periodEnd, refreshKey }: 
           </div>
 
           <DataTable
-            columns={COLUMNS}
+            columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
             emptyMessage="Nenhuma transação encontrada com esses filtros."
@@ -412,62 +417,76 @@ export function TransactionsView({ range, periodStart, periodEnd, refreshKey }: 
 
 /* ─── the table ─────────────────────────────────────────────────── */
 
-const COLUMNS: readonly TableColumn<TransactionRow>[] = [
-  {
-    header: "Data",
-    numeric: true,
-    render: (row) => <span style={{ whiteSpace: "nowrap" }}>{dayMonthShort(row.localDate)}</span>,
-  },
-  {
-    header: "Descrição",
-    render: (row) => {
-      const legend = categoryLegend(row);
-      return (
-        <div>
-          <div className="tx-desc">{row.description}</div>
-          <div className="tx-cat">
-            {legend.map((category) => (
-              <i key={category.id ?? "none"} style={{ background: categoryColor(category.id) }}></i>
-            ))}
-            {legend.map((category) => category.name).join(" · ")}
-            {row.internal ? (
-              <span className="tag" style={{ marginLeft: 6 }}>
-                interna
-              </span>
-            ) : null}
-            {row.recognised === "saque" ? <SaqueBadge row={row} /> : null}
-            {row.note !== null ? <NoteChip note={row.note} /> : null}
-          </div>
-          {row.recognised === "saque" && row.allocations.length > 0 ? (
-            <div className="tx-alloc" title="Alocações do saque">
-              {row.allocations.map((allocation) => `${categoryName(allocation.categoryId)} ${centsToBRL(allocation.amountCents)}`).join(" · ")}
-            </div>
-          ) : null}
-        </div>
-      );
+/**
+ * The list's columns. The Valor cell shows a split saque's portion under an
+ * active category filter (ADR-0004) — the money the filter names — so the
+ * filtered list agrees with the sidebar slice it came from; unfiltered, the
+ * transaction's whole.
+ */
+function transactionColumns(categoryFilter: readonly string[]): readonly TableColumn<TransactionRow>[] {
+  return [
+    {
+      header: "Data",
+      numeric: true,
+      render: (row) => <span style={{ whiteSpace: "nowrap" }}>{dayMonthShort(row.localDate)}</span>,
     },
-  },
-  {
-    header: "Tipo",
-    render: (row) => (
-      <span className={`tx-type ${paymentMethodClass(row)}`}>{row.paymentMethod}</span>
-    ),
-  },
-  {
-    header: "Status",
-    render: (row) => <span className="tag">{row.status}</span>,
-  },
-  {
-    header: "Valor",
-    numeric: true,
-    render: (row) => (
-      <span className={row.amountCents > 0 ? "val-pos" : "val-neg"}>
-        {row.amountCents > 0 ? "+" : ""}
-        {centsToBRL(row.amountCents)}
-      </span>
-    ),
-  },
-];
+    {
+      header: "Descrição",
+      render: (row) => <DescriptionCell row={row} />,
+    },
+    {
+      header: "Tipo",
+      render: (row) => (
+        <span className={`tx-type ${paymentMethodClass(row)}`}>{row.paymentMethod}</span>
+      ),
+    },
+    {
+      header: "Status",
+      render: (row) => <span className="tag">{row.status}</span>,
+    },
+    {
+      header: "Valor",
+      numeric: true,
+      render: (row) => {
+        const displayed = filteredAmountCents(row, categoryFilter);
+        return (
+          <span className={displayed > 0 ? "val-pos" : "val-neg"}>
+            {displayed > 0 ? "+" : ""}
+            {centsToBRL(displayed)}
+          </span>
+        );
+      },
+    },
+  ];
+}
+
+/** The Descrição cell: the row's name, its category legend, the tags and the saque's alocação summary. */
+function DescriptionCell({ row }: { readonly row: TransactionRow }) {
+  const legend = categoryLegend(row);
+  return (
+    <div>
+      <div className="tx-desc">{row.description}</div>
+      <div className="tx-cat">
+        {legend.map((category) => (
+          <i key={category.id ?? "none"} style={{ background: categoryColor(category.id) }}></i>
+        ))}
+        {legend.map((category) => category.name).join(" · ")}
+        {row.internal ? (
+          <span className="tag" style={{ marginLeft: 6 }}>
+            interna
+          </span>
+        ) : null}
+        {row.recognised === "saque" ? <SaqueBadge row={row} /> : null}
+        {row.note !== null ? <NoteChip note={row.note} /> : null}
+      </div>
+      {row.recognised === "saque" && row.allocations.length > 0 ? (
+        <div className="tx-alloc" title="Alocações do saque">
+          {row.allocations.map((allocation) => `${categoryName(allocation.categoryId)} ${centsToBRL(allocation.amountCents)}`).join(" · ")}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 /** The split badge: not detailed, fully split, or split with a sobra left. */
 function SaqueBadge({ row }: { readonly row: TransactionRow }) {
@@ -580,7 +599,7 @@ function slicePercent(slice: BreakdownSlice, totalCents: number): string {
 type SplitDraft = { readonly categoryId: string; readonly text: string };
 
 /**
- * The two variants share one shell — title, value box, metadata, description
+ * The two variants share one shell — title, sub line, value box, description
  * field, note — and differ in the middle: a recognised saque edits its
  * alocações, everything else edits the category. The mark ("Marcar como
  * saque" / "Remover marcação") is an immediate write, not part of the batch;
@@ -635,25 +654,11 @@ function TransactionDetailModal({
   return (
     <Modal
       title="Detalhes da Transação"
-      sub={`${dayMonthShort(row.localDate)} · ${row.description} · ${row.paymentMethod} · ${row.status}`}
+      sub={transactionModalSub(row)}
       open
       onClose={onClose}
     >
-      <div className="split-summary">
-        <span className="lbl">{valueLabel(row.amountCents)}</span>
-        <span className={`amt num ${valueTone(row.amountCents)}`}>{centsToBRL(row.amountCents)}</span>
-      </div>
-
-      <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", margin: "16px 0 0" }}>
-        <dt className="meta">Data</dt>
-        <dd style={{ margin: 0 }}>{fullDate(row.localDate)}</dd>
-        <dt className="meta">Conta</dt>
-        <dd style={{ margin: 0 }}>{row.accountName}</dd>
-        <dt className="meta">Tipo</dt>
-        <dd style={{ margin: 0 }}>{row.paymentMethod}</dd>
-        <dt className="meta">Status</dt>
-        <dd style={{ margin: 0 }}>{row.status}</dd>
-      </dl>
+      <ValueBox amountCents={row.amountCents} recognised={row.recognised} />
 
       <div className="field" style={{ marginTop: 16 }}>
         <label htmlFor="tx-description">Descrição</label>
@@ -924,22 +929,6 @@ function unmarkHint(blocked: boolean): string | undefined {
   return undefined;
 }
 
-/** The value box's label: what the movement did, in the domain's words. */
-function valueLabel(amountCents: number): string {
-  if (amountCents > 0) {
-    return "Valor recebido";
-  }
-  return "Valor da despesa";
-}
-
-/** The value box's tone: a receita in green, a despesa in the foreground. */
-function valueTone(amountCents: number): string {
-  if (amountCents > 0) {
-    return "pos";
-  }
-  return "";
-}
-
 /** The split bar's tone: green when fully allocated, red when overflowing. */
 function barTone(allocatedCents: number, leftoverCents: number): string {
   if (leftoverCents < 0) {
@@ -984,12 +973,4 @@ function centsToInputText(cents: number): string {
     return String(whole);
   }
   return `${whole},${fraction}`;
-}
-
-const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"] as const;
-
-/** "19 mar 2026" — the modal's date, with the year the list omits. */
-function fullDate(localDate: string): string {
-  const month = MONTHS_SHORT[Number(localDate.slice(5, 7)) - 1] ?? "?";
-  return `${Number(localDate.slice(8, 10))} ${month} ${localDate.slice(0, 4)}`;
 }

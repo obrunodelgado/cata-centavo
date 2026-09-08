@@ -213,11 +213,25 @@ export function filterByCategories(rows: readonly DerivedTransaction[], category
  * donut uses, over the tipo-filtered window, in the direction the filter asks
  * for. The category filter is deliberately not applied — the sidebar is
  * navigation, so every category stays clickable while one is active.
+ *
+ * The direction is pure: only the rows moving the way the title promises feed
+ * a slice. Under `todas` the title says "Despesas", so the slices count each
+ * category's expenses whole — netting the category's own receitas into the
+ * slice shrank them, dropped every category whose receitas outran its
+ * spending (Transfers, when the card bill's receitas outrun the PIX out), and
+ * made the sidebar total disagree with the overview's Despesas KPI. A
+ * category's receitas are one click away under the Receitas filter.
  */
 export function breakdownOf(rows: readonly DerivedTransaction[], today: string, type: TransactionTypeFilter): readonly BreakdownSlice[] {
-  const wanted = type === "receitas" ? (total: number): boolean => total > 0 : (total: number): boolean => total < 0;
-  return aggregate(rows, today)
-    .groups.filter((group) => wanted(group.totalCents))
+  const movingOut = type !== "receitas";
+  const inDirection = rows.filter((row) => {
+    if (movingOut) {
+      return row.amountCents < 0;
+    }
+    return row.amountCents > 0;
+  });
+  return aggregate(inDirection, today)
+    .groups
     .map((group) => ({
       categoryId: group.categoryId,
       name: categoryName(group.categoryId),

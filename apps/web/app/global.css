@@ -396,6 +396,7 @@ select.input { cursor: pointer; }
 .modal-backdrop.open { opacity: 1; pointer-events: auto; }
 .modal { width: min(520px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; box-shadow: 0 24px 60px -24px color-mix(in oklch, var(--fg) 35%, transparent); }
 .modal h2, .modal h3 { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .modal-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
 .bank-row { display: flex; align-items: center; gap: 12px; padding: 11px 2px; border-top: 1px solid var(--border); }

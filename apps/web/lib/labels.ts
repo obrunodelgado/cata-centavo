@@ -2,6 +2,8 @@ import { CATEGORIES, categoryById } from "@cata-centavo/core";
 
 import type { Account } from "@cata-centavo/core";
 
+import { dayMonthShort } from "./datetime.ts";
+
 /** Pluggy's paymentMethod raw values in pt-BR; unknown values render as themselves. */
 const PAYMENT_METHOD_NAMES: Readonly<Record<string, string>> = {
   PIX: "PIX",
@@ -37,6 +39,90 @@ export function paymentMethodOf(row: {
     return "Cartão";
   }
   return "—";
+}
+
+/**
+ * The detail modal's sub line — the only metadata the design gives the modal.
+ * A recognised saque speaks the domain's words ("dinheiro vivo", CONTEXT.md)
+ * instead of repeating the Tipo chip the row already carries; every other row
+ * reads data · descrição · tipo · status.
+ */
+export function transactionModalSub(row: {
+  readonly localDate: string;
+  readonly description: string;
+  readonly paymentMethod: string;
+  readonly status: string;
+  readonly recognised: "saque" | "estorno" | null;
+}): string {
+  const head = `${dayMonthShort(row.localDate)} · ${row.description}`;
+  if (row.recognised === "saque") {
+    return `${head} · dinheiro vivo`;
+  }
+  return `${head} · ${row.paymentMethod} · ${row.status}`;
+}
+
+/**
+ * The value box's label: what the movement did, in the domain's words. A
+ * recognised saque names itself; a receita was received; everything else is a
+ * despesa.
+ */
+export function transactionValueLabel(row: {
+  readonly amountCents: number;
+  readonly recognised: "saque" | "estorno" | null;
+}): string {
+  if (row.recognised === "saque") {
+    return "Valor do saque";
+  }
+  if (row.amountCents > 0) {
+    return "Valor recebido";
+  }
+  return "Valor da despesa";
+}
+
+/**
+ * The value box's tone: a receita in green, a despesa in the foreground. The
+ * design never paints a despesa red inside the modal; red is the overflow's
+ * color, not a negative balance's.
+ */
+export function transactionValueTone(amountCents: number): string {
+  if (amountCents > 0) {
+    return "pos";
+  }
+  return "";
+}
+
+/**
+ * The value a row displays under an active category filter (ADR-0004): a split
+ * saque's money names its alocação categories and its sobra names none, so the
+ * list shows the portion the filter selects — the same membership
+ * `filterByCategories` admits — instead of the transaction's whole. Any other
+ * row, and any row with no filter at all, displays its own amount.
+ */
+export function filteredAmountCents(
+  row: {
+    readonly recognised: "saque" | "estorno" | null;
+    readonly amountCents: number;
+    readonly allocations: readonly { readonly categoryId: string; readonly amountCents: number }[];
+  },
+  categoryIds: readonly string[],
+): number {
+  if (categoryIds.length === 0 || row.recognised !== "saque") {
+    return row.amountCents;
+  }
+  let portion = 0;
+  for (const allocation of row.allocations) {
+    if (categoryIds.includes(allocation.categoryId)) {
+      portion += allocation.amountCents;
+    }
+  }
+  if (categoryIds.includes("none")) {
+    const allocated = row.allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+    const leftover = -row.amountCents - allocated;
+    if (leftover > 0) {
+      portion += leftover;
+    }
+  }
+  return -portion;
 }
 
 /** The pt-BR label of a top-level category id, or "Sem categoria". */
