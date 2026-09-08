@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { CATEGORIES, CATEGORY_IDS } from "@cata-centavo/core";
 
-import { categoryColor } from "../../apps/web/lib/labels.ts";
+import { categoryColor, categoryLegend } from "../../apps/web/lib/labels.ts";
 
 /**
  * The palette is an identity encoding: two categories sharing a color make a
@@ -28,5 +28,51 @@ describe("lib/labels — categoryColor", () => {
       }
       assert.notEqual(categoryColor(id), fallback, `category ${id} shares the fallback`);
     }
+  });
+});
+
+/**
+ * The list row's legend — the dot colors and the label. A split saque has no
+ * category of its own (ADR-0004): its alocações name the money, so they are
+ * the legend. An unsplit one stays "Sem categoria", honestly — the sobra is
+ * real money out with nowhere named yet.
+ */
+describe("lib/labels — categoryLegend", () => {
+  const legendRow = (overrides: Partial<Parameters<typeof categoryLegend>[0]> = {}) => ({
+    categoryId: null,
+    categoryName: null,
+    recognised: null,
+    allocations: [],
+    ...overrides,
+  });
+
+  it("passes an ordinary row's category through", () => {
+    assert.deepEqual(categoryLegend(legendRow({ categoryId: CATEGORIES.healthcare.id, categoryName: CATEGORIES.healthcare.pt })), [
+      { id: CATEGORIES.healthcare.id, name: CATEGORIES.healthcare.pt },
+    ]);
+  });
+
+  it("keeps Sem categoria for an unsplit saque and for an estorno", () => {
+    assert.deepEqual(categoryLegend(legendRow({ recognised: "saque" })), [{ id: null, name: "Sem categoria" }]);
+    assert.deepEqual(categoryLegend(legendRow({ recognised: "estorno" })), [{ id: null, name: "Sem categoria" }]);
+  });
+
+  it("names the alocação of a split saque", () => {
+    assert.deepEqual(
+      categoryLegend(legendRow({ recognised: "saque", allocations: [{ categoryId: CATEGORIES.healthcare.id }] })),
+      [{ id: CATEGORIES.healthcare.id, name: CATEGORIES.healthcare.pt }],
+    );
+  });
+
+  it("names every distinct alocação of a multi-category split, first seen first", () => {
+    const allocations = [
+      { categoryId: CATEGORIES.healthcare.id },
+      { categoryId: CATEGORIES.groceries.id },
+      { categoryId: CATEGORIES.healthcare.id },
+    ];
+    assert.deepEqual(categoryLegend(legendRow({ recognised: "saque", allocations })), [
+      { id: CATEGORIES.healthcare.id, name: CATEGORIES.healthcare.pt },
+      { id: CATEGORIES.groceries.id, name: CATEGORIES.groceries.pt },
+    ]);
   });
 });

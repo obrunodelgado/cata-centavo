@@ -273,6 +273,42 @@ describe("handleTransactions — every parameter provably changes the result set
     assert.deepEqual(idsOf(none), ["sem-cat"]);
   });
 
+  it("a split saque lists under its alocações' categories and leaves none", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    await handleTransactionSplit(fx.source, saqueRequest({
+      transactionId: "saque-1",
+      allocations: [{ categoryId: "10000000", amountCents: 50_000 }],
+    }));
+
+    const mercado = await payload(fx.source, { categoryIds: "10000000", from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(mercado.ok, true);
+    if (!mercado.ok) return;
+    assert.deepEqual(idsOf(mercado), ["saque-1"]);
+
+    const none = await payload(fx.source, { categoryIds: "none", from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(none.ok, true);
+    if (!none.ok) return;
+    assert.deepEqual(idsOf(none), []);
+  });
+
+  it("a saque's sobra keeps it under none while its alocações name their categories", async () => {
+    const fx = seededFixture([tx(SAQUE)]);
+    await handleTransactionSplit(fx.source, saqueRequest({
+      transactionId: "saque-1",
+      allocations: [{ categoryId: "10000000", amountCents: 30_000 }],
+    }));
+
+    const mercado = await payload(fx.source, { categoryIds: "10000000", from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(mercado.ok, true);
+    if (!mercado.ok) return;
+    assert.deepEqual(idsOf(mercado), ["saque-1"]);
+
+    const none = await payload(fx.source, { categoryIds: "none", from: "2026-08-01", to: "2026-09-30" });
+    assert.equal(none.ok, true);
+    if (!none.ok) return;
+    assert.deepEqual(idsOf(none), ["saque-1"]);
+  });
+
   it("puts a credit-card debit and a bank debit in the same despesas set", async () => {
     const fx = seededFixture();
     const body = await payload(fx.source, { type: "despesas", from: "2026-08-01", to: "2026-09-30" });

@@ -183,10 +183,12 @@ export function filterByType(rows: readonly DerivedTransaction[], type: Transact
 }
 
 /**
- * The category filter, resolved in JS against the derived category. `"none"`
- * selects the rows the derivation could not categorize — the same value the
- * MCP boundary accepts. An unknown id never reaches here: the boundary
- * answers 400 first.
+ * The category filter, resolved in JS against the same membership the
+ * aggregate groups by (ADR-0004): a saque's money names its alocação
+ * categories, and its sobra não alocada names none — an unsplit saque is
+ * all sobra. `"none"` selects the rows the derivation could not categorize
+ * — the same value the MCP boundary accepts. An unknown id never reaches
+ * here: the boundary answers 400 first.
  */
 export function filterByCategories(rows: readonly DerivedTransaction[], categoryIds: readonly string[]): readonly DerivedTransaction[] {
   if (categoryIds.length === 0) {
@@ -194,7 +196,16 @@ export function filterByCategories(rows: readonly DerivedTransaction[], category
   }
   const wantsNone = categoryIds.includes("none");
   const ids = categoryIds.filter((value) => value !== "none");
-  return rows.filter((row) => (row.category === null ? wantsNone : ids.includes(row.category)));
+  return rows.filter((row) => {
+    if (row.recognised === "saque") {
+      const allocated = row.allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+      if (-row.amountCents - allocated > 0 && wantsNone) {
+        return true;
+      }
+      return row.allocations.some((allocation) => ids.includes(allocation.categoryId));
+    }
+    return row.category === null ? wantsNone : ids.includes(row.category);
+  });
 }
 
 /**

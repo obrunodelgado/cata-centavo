@@ -153,6 +153,14 @@ function buildQuery(filter: TransactionFilter): { readonly sql: string; readonly
   return { sql, parameters };
 }
 
+/**
+ * The category filter in SQL, mirroring `core/aggregate.ts`'s `addToGroups`
+ * (ADR-0004): a saque's money names its alocação categories and its sobra
+ * names none — an unsplit saque is all sobra — while an estorno is income
+ * under none and every other row answers through the derived category. The
+ * alocações ride the CTE as `c_allocations` JSON, so `json_each` reads them
+ * without touching the userdata table again.
+ */
 function categoryCondition(categories: readonly CategoryFilterValue[]): { readonly sql: string; readonly parameters: readonly string[] } {
   // Stryker disable next-line ConditionalExpression,BlockStatement: an empty category filter must remain an explicit no-match query.
   if (categories.length === 0) {
@@ -162,13 +170,26 @@ function categoryCondition(categories: readonly CategoryFilterValue[]): { readon
   const wantsNone = categories.length !== ids.length;
 
   const clauses: string[] = [];
+  const parameters: string[] = [];
   if (ids.length > 0) {
     clauses.push(`${DERIVED_CATEGORY} IN (${placeholders(ids.length)})`);
+    parameters.push(...ids);
+    clauses.push(saqueAllocationClause(ids.length));
+    parameters.push(...ids);
   }
   if (wantsNone) {
-    clauses.push(`${DERIVED_CATEGORY} IS NULL`);
+    clauses.push(`(${DERIVED_CATEGORY} IS NULL AND c_recognised IS NOT 'saque')`);
+    clauses.push(`(c_recognised = 'saque' AND -amount_cents > COALESCE((SELECT SUM(json_extract(value, '$.amountCents')) FROM json_each(c_allocations)), 0))`);
   }
-  return { sql: `(${clauses.join(" OR ")})`, parameters: ids };
+  return { sql: `(${clauses.join(" OR ")})`, parameters };
+}
+
+/** A saque row joins a category through its alocações, never its own category. */
+function saqueAllocationClause(count: number): string {
+  return `(c_recognised = 'saque' AND EXISTS (
+    SELECT 1 FROM json_each(c_allocations)
+    WHERE json_extract(value, '$.categoryId') IN (${placeholders(count)})
+  ))`;
 }
 
 /**

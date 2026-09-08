@@ -14,7 +14,7 @@ import {
 } from "../../lib/api.ts";
 import type { BreakdownSlice, CategoryOption, TransactionRow, TransactionsResponse, TransactionTypeFilter } from "../../lib/contracts.ts";
 import { dayMonthShort } from "../../lib/datetime.ts";
-import { categoryColor, categoryName, paymentMethodClass } from "../../lib/labels.ts";
+import { categoryColor, categoryLegend, categoryName, paymentMethodClass } from "../../lib/labels.ts";
 import { centsToBRL, parseCentsInput, percentBRL } from "../../lib/money.ts";
 import type { Range } from "../../lib/series.ts";
 import { useApi } from "../../lib/use-api.ts";
@@ -420,27 +420,32 @@ const COLUMNS: readonly TableColumn<TransactionRow>[] = [
   },
   {
     header: "Descrição",
-    render: (row) => (
-      <div>
-        <div className="tx-desc">{row.description}</div>
-        <div className="tx-cat">
-          <i style={{ background: categoryColor(row.categoryId) }}></i>
-          {row.categoryName ?? "Sem categoria"}
-          {row.internal ? (
-            <span className="tag" style={{ marginLeft: 6 }}>
-              interna
-            </span>
-          ) : null}
-          {row.recognised === "saque" ? <SaqueBadge row={row} /> : null}
-          {row.note !== null ? <NoteChip note={row.note} /> : null}
-        </div>
-        {row.recognised === "saque" && row.allocations.length > 0 ? (
-          <div className="tx-alloc" title="Alocações do saque">
-            {row.allocations.map((allocation) => `${categoryName(allocation.categoryId)} ${centsToBRL(allocation.amountCents)}`).join(" · ")}
+    render: (row) => {
+      const legend = categoryLegend(row);
+      return (
+        <div>
+          <div className="tx-desc">{row.description}</div>
+          <div className="tx-cat">
+            {legend.map((category) => (
+              <i key={category.id ?? "none"} style={{ background: categoryColor(category.id) }}></i>
+            ))}
+            {legend.map((category) => category.name).join(" · ")}
+            {row.internal ? (
+              <span className="tag" style={{ marginLeft: 6 }}>
+                interna
+              </span>
+            ) : null}
+            {row.recognised === "saque" ? <SaqueBadge row={row} /> : null}
+            {row.note !== null ? <NoteChip note={row.note} /> : null}
           </div>
-        ) : null}
-      </div>
-    ),
+          {row.recognised === "saque" && row.allocations.length > 0 ? (
+            <div className="tx-alloc" title="Alocações do saque">
+              {row.allocations.map((allocation) => `${categoryName(allocation.categoryId)} ${centsToBRL(allocation.amountCents)}`).join(" · ")}
+            </div>
+          ) : null}
+        </div>
+      );
+    },
   },
   {
     header: "Tipo",

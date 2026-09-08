@@ -493,6 +493,23 @@ describe("allocations on reads", () => {
 
     assert.deepEqual(store.query(filterFor(["acc-1"]))[0]?.allocations, []);
   });
+
+  it("a split saque answers its alocação categories and keeps its sobra under none", () => {
+    const { store } = splitStore();
+
+    assert.deepEqual(idsOf(store.query({ ...filterFor(["acc-1"]), categories: ["11000000"] })), ["saque"]);
+    assert.deepEqual(idsOf(store.query({ ...filterFor(["acc-1"]), categories: ["18000000"] })), ["saque"]);
+    assert.deepEqual(idsOf(store.query({ ...filterFor(["acc-1"]), categories: ["none"] })), ["saque"]);
+  });
+
+  it("a fully allocated saque leaves the none filter", () => {
+    const { store, db } = storeAndDbFor();
+    store.replaceAccount("acc-1", "conn-1", [tx({ id: "saque", categoryId: "04010000", amountCents: -50_000 })], null);
+    createTransactionSplitStore(db).set("saque", [{ categoryId: "11000000", amountCents: 50_000 }]);
+
+    assert.deepEqual(idsOf(store.query({ ...filterFor(["acc-1"]), categories: ["11000000"] })), ["saque"]);
+    assert.deepEqual(idsOf(store.query({ ...filterFor(["acc-1"]), categories: ["none"] })), []);
+  });
 });
 
 describe("description override on reads", () => {

@@ -48,6 +48,27 @@ export function categoryName(categoryId: string | null): string {
 }
 
 /**
+ * The category legend a transaction row displays — one entry per category the
+ * row's money names, each with the id for the dot's color and the pt-BR name
+ * for the label. A split saque has no category of its own (ADR-0004): its
+ * alocações name the money, so they are the legend; an unsplit one stays
+ * "Sem categoria", honestly — the sobra is real money out with nowhere
+ * named yet.
+ */
+export function categoryLegend(row: {
+  readonly categoryId: string | null;
+  readonly categoryName: string | null;
+  readonly recognised: "saque" | "estorno" | null;
+  readonly allocations: readonly { readonly categoryId: string }[];
+}): readonly { readonly id: string | null; readonly name: string }[] {
+  if (row.recognised !== "saque" || row.allocations.length === 0) {
+    return [{ id: row.categoryId, name: row.categoryName ?? "Sem categoria" }];
+  }
+  const distinct = [...new Set(row.allocations.map((allocation) => allocation.categoryId))];
+  return distinct.map((id) => ({ id, name: categoryName(id) }));
+}
+
+/**
  * The series palette, one color per top-level category — two categories on
  * the same color make a donut's slices and the list's dots indistinguishable.
  * Keyed through `CATEGORIES` so a taxonomy change cannot silently orphan a
